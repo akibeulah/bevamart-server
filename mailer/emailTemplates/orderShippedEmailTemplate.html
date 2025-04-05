@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation - TheSkintyShop</title>
+    <style>
+        /* Add your CSS styles here */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #F2EBFF;
+            /* Soft version of footer color */
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .header {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto 80px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .svg-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+        }
+
+        .greeting {
+            padding: 20px 20px 0;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            max-width: 200px;
+        }
+
+        h1,
+        p {
+            color: #333333;
+        }
+
+        table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            padding: 8px;
+        }
+
+        th {
+            text-align: center;
+        }
+
+        .order-details {
+            padding: 20px 20px 0;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+        }
+
+        .item img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+
+        .footer {
+            background: #6F20E1;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+            margin-top: 20px;
+        }
+
+        .contact-info p,
+        .contact-info a,
+        .terms a,
+        .terms a:visited,
+        .terms p {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .terms a {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body bgcolor="#F2EBFF" style="background: #F2EBFF">
+    <div class="header">
+        <img src="https://www.theskintyshopng.com/cdn/shop/files/Skinty_Shop_logo_200x.png?v=1648217218"
+            alt="TheSkintyShop Logo">
+    </div>
+    <div class="container">
+        <div class="greeting">
+            <h1>Hi {{first_name}},</h1>
+            <p>Thanks again for shopping on TheSkintyShop!</p>
+            <p>Your order <strong>#{{order_number}}</strong> has been shipped successfully and is out for delivery.</p>
+            <p>Please make sure you are with your phone and reachable with the details below: </p>
+            <div class="">
+                <p>John Doe 123 Main Street</p>
+                <p>Apt 101, New York</p>
+                <p>NY</p>
+
+                <h4 style="margin: 0;">We will be calling:</h4>
+                <p>+1 (123) 456-7890</p>
+            </div>
+        </div>
+        <div class="svg-container">
+            <svg xmlns="http://www.w3.org/2000/svg" width="520" height="60" viewBox="0 0 520 60">
+                <!-- Connecting Rectanlges -->
+                <rect x="37" y="15" width="100" height="2" fill="#27AE60" stroke="#27AE60" stroke-width="1" />
+                <rect x="145" y="15" width="100" height="2" fill="#27AE60" stroke="#27AE60" stroke-width="1" />
+                <rect x="253" y="15" width="100" height="2" fill="#e3e3e3" stroke="#e3e3e3" stroke-width="1" />
+                <rect x="358" y="15" width="100" height="2" fill="#e3e3e3" stroke="#e3e3e3" stroke-width="1" />
+
+                <!-- Boxes -->
+                <rect x="25" y="10" width="12" height="12" fill="#27AE60" />
+                <rect x="133" y="10" width="12" height="12" fill="#27AE60" />
+                <rect x="241" y="10" width="12" height="12" fill="#27AE60" />
+                <rect x="349" y="10" width="12" height="12" fill="#e3e3e3" />
+                <rect x="457" y="10" width="12" height="12" fill="#e3e3e3" />
+
+                <!-- White Checkmark -->
+                <path fill="#fff" d="M30 16L27 13L25 15L30 20L39 11L37 9L30 16Z" />
+                <path fill="#fff" d="M138 16L135 13L133 15L138 20L147 11L145 9L138 16Z" />
+                <path fill="#fff" d="M246 16L243 13L241 15L246 20L255 11L253 9L246 16Z" />
+                <path fill="#fff" d="M354 16L351 13L349 15L354 20L363 11L361 9L354 16Z" />
+                <path fill="#fff" d="M462 16L459 13L457 15L462 20L471 11L469 9L462 16Z" />
+
+                <!-- Labels -->
+                <text x="30" y="38" fill="black" font-size="10" text-anchor="middle">Order placed</text>
+                <text x="138" y="38" fill="black" font-size="10" text-anchor="middle">Processing</text>
+                <text x="246" y="38" fill="black" font-size="10" text-anchor="middle">Shipped</text>
+                <text x="354" y="38" fill="black" font-size="10" text-anchor="middle">Delivered</text>
+                <text x="462" y="38" fill="black" font-size="10" text-anchor="middle">Reviewed</text>
+            </svg>
+
+
+        </div>
+        <div class="order-details">
+            <h2>Here's what you ordered:</h2>
+            <table>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Amount</th>
+                </tr>
+                <tr>
+                    <td class="item"><img
+                            src="https://www.theskintyshopng.com/cdn/shop/products/71VT0c6m3LL._SL1500.jpg?v=1678393567&width=360"
+                            alt="Product 1"> TOUCH Skin Lightening & Brightening Cream</td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">₦27,000.00</td>
+                </tr>
+                <tr>
+                    <td class="item"><img
+                            src="https://www.theskintyshopng.com/cdn/shop/products/673ed874608d5af6105b3bc5bc86d01a.jpg?v=1657061621&width=360"
+                            alt="Product 2"> COSRX - Salicylic Acid Daily Gentle Cleanser</td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right;">₦11,000.00</td>
+                </tr>
+            </table>
+            <table style="width: 75%; border-collapse: collapse; margin-left: auto;">
+                <tr>
+                    <td style="text-align: left;">Total Amount:</td>
+                    <td style="text-align: right;">₦38,000.00</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Delivery Charge:</td>
+                    <td style="text-align: right;">₦500.00</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Discount (10% - NEW2SKINTY):</td>
+                    <td style="text-align: right;">₦3,800.00</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Total:</td>
+                    <td style="text-align: right;">₦34,700.00</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Payment Method:</td>
+                    <td style="text-align: right;">Credit Card</td>
+                </tr>
+            </table>
+        </div>
+        <div class="footer">
+            <div class="contact-info">
+                <p>Stay connected with us:</p>
+                <p>Follow us on <a href="https://www.instagram.com/theskintyshop/">Instagram</a> | <a
+                        href="https://www.facebook.com/theskintyshop/">Facebook</a></p>
+                <p>Email us: info@theskintyshop.com</p>
+                <p>Call us: +1 (123) 456-7890</p>
+            </div>
+            <div class="terms">
+                <p>By shopping with us, you agree to our <a href="#" class="terms">Terms of Service</a> and <a href="#"
+                        class="terms">Refund Policy</a>.</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
