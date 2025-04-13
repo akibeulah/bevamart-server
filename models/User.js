@@ -48,9 +48,20 @@ userSchema.pre('save', async function (next) {
     }
 })
 
+userSchema.post('findOne', async function (doc, next) {
+
+    if (doc) {
+        doc.role = doc.role?.toUpperCase()
+    }
+    next();
+})
+
+
 userSchema.methods.comparePassword = async function (password) {
     try {
-        return await bcrypt.compare(password, this.password);
+        let result = await bcrypt.compare(password, this.password);
+        this.password = "";
+        return result;
     } catch (error) {
         throw error;
     }
