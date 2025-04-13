@@ -64,13 +64,7 @@ const AuthenticateUser = async (req, res, next) => {
             expiresIn: "1day"
         }
     );
-
-    const returningData = {
-        ...existingUser["_doc"],
-        password: "TSS_SECRET"
-    }
-
-    return defaultResponse(res, [200, "✅ Login Successful", {token: token, user_details: returningData}])
+    return defaultResponse(res, [200, "✅ Login Successful", {token: token, user_details: existingUser}])
 }
 
 module.exports = {CreateCustomer, AuthenticateUser}

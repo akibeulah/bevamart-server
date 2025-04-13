@@ -6,7 +6,7 @@ const verifyUserAuthenticated = async (req, res, next) => {
     let token;
 
     if (
-        req.headers.authorization && req.headers.authorization.startsWith("TSS_BEARER")
+        req.headers.authorization && req.headers.authorization.startsWith("BM_BEARER")
     ) {
         try {
             token = await req.headers.authorization.split(" ")[1];
@@ -25,11 +25,7 @@ const verifyUserAuthenticated = async (req, res, next) => {
                 decodedData = jwt.verify(token, process.env.JWT_SECRET);
 
                 req.user_id = decodedData.id;
-                let userHolster = await User.findById(decodedData.id)
-                req.user = {
-                    ...userHolster["_doc"],
-                    password: "TSS_SECRET"
-                }
+                req.user = await User.findOne({_id: decodedData.id})
             }
             next();
         } catch (error) {
@@ -44,7 +40,7 @@ const verifyUserAuthenticatedOptional = async (req, res, next) => {
     let token;
 
     if (
-        req.headers.authorization && req.headers.authorization.startsWith("TSS_BEARER")
+        req.headers.authorization && req.headers.authorization.startsWith("BM_BEARER")
     ) {
         try {
             token = await req.headers.authorization.split(" ")[1];
@@ -79,10 +75,24 @@ const verifyUserAuthenticatedOptional = async (req, res, next) => {
 };
 
 const verifyUserRoleAdmin = async (req, res, next) => {
-    if (req.user.role === "admin")
+    if (req.user.role.toLowerCase() === "admin")
         next()
     else
         return defaultResponse(res, [401, "❌ Not authorized", ""])
 }
 
-module.exports = {verifyUserAuthenticated, verifyUserRoleAdmin, verifyUserAuthenticatedOptional}
+const verifyUserRole = (roles = ["admin"]) => {
+    const allowedRoles = Array.isArray(roles) ? roles : [roles];
+    console.log(allowedRoles)
+    return (req, res, next) => {
+        console.log("user: " + req.user)
+
+        if (allowedRoles.map(role => role.toLowerCase()).includes(req.user.role.toLowerCase())) {
+            next();
+        } else {
+            return defaultResponse(res, [401, "❌ Not authorized to access this resource", ""]);
+        }
+    };
+};
+
+module.exports = {verifyUserAuthenticated, verifyUserRoleAdmin, verifyUserAuthenticatedOptional, verifyUserRole}
