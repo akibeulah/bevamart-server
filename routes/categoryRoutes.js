@@ -6,9 +6,9 @@ const {
     createCategory,
     updateCategory,
     deleteCategory,
-    getCategoriesOverview
+    getCategoriesOverview, toggleCategoryIsActive
 } = require('../services/categoryService');
-const {verifyUserAuthenticated, verifyUserRoleAdmin} = require('../middleware/authenticationMiddleware');
+const {verifyUserAuthenticated, verifyUserRoleAdmin, verifyUserRole} = require('../middleware/authenticationMiddleware');
 const {checkCategoryExistence} = require('../middleware/productMiddleware');
 const router = express.Router();
 
@@ -43,6 +43,14 @@ router.put(
     verifyUserRoleAdmin,
     checkCategoryExistence,
     updateCategory
+);
+
+router.put(
+    '/categories/toggleIsActive/:categoryId',
+    verifyUserAuthenticated,
+    verifyUserRoleAdmin,
+    checkCategoryExistence,
+    toggleCategoryIsActive
 );
 
 router.delete(

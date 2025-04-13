@@ -2,24 +2,66 @@ const Category = require("../models/Category")
 const {defaultResponse} = require("../utils/requestHelper")
 const Product = require("../models/Product");
 
+const  categoryNameIsValid = async (name) => {
+    return name && name.trim() !== "" && await Category.countDocuments({name}) === 0;
+}
+
 const createCategory = async (req, res, next) => {
     try {
-        const {name, description} = req.body
-        const category = new Category({name, description})
+        const {name, description, parentCategory} = req.body
+        const categoryData = {
+            name,
+            description
+        }
+
+        if (!(await categoryNameIsValid(name))) {
+            return defaultResponse(res, [400, "Category with this name already exists", null]);
+        }
+
+        if (parentCategory && parentCategory.trim() !== '') {
+            try {
+                await Category.findById(parentCategory)
+            } catch (_) {
+                return defaultResponse(res, [400, "Parent category does not exist", null]);
+            }
+
+            categoryData.parentCategory = parentCategory
+        }
+        const category = new Category(categoryData)
 
         await category.save()
         return defaultResponse(res, [200, "Category created successfully", category])
     } catch (error) {
-        console.log(error)
-        return defaultResponse(res, [500, "Oops, something went wrong", ""])
+        return defaultResponse(res, [500, "Oops, something went wrong", error.message])
     }
 }
 
 const updateCategory = async (req, res, next) => {
     try {
-        const {name, description} = req.body;
+        const {name, description, parentCategory} = req.body;
 
-        const updatedCategory = await Category.findByIdAndUpdate(req.category._id, {name, description}, {new: true});
+        let updatedData = {};
+        if (name && name.trim() !== '') {
+            if (!(await categoryNameIsValid(name))) {
+                return defaultResponse(res, [400, "Category with this name already exists", null]);
+            }
+
+            updatedData.name = name.trim()
+        }
+        if (description && description.trim() !== '') {
+            updatedData.description = description.trim()
+        }
+        if (parentCategory && parentCategory.trim() !== '') {
+            try {
+                await Category.findById(parentCategory)
+            } catch (_) {
+                return defaultResponse(res, [400, "Parent category does not exist", null]);
+            }
+
+            updatedData.parentCategory = parentCategory
+        }
+
+        const updatedCategory = await Category.findByIdAndUpdate(req.category._id, updatedData, {new: true});
 
         return defaultResponse(res, [200, "Category updated successfully", updatedCategory]);
     } catch (error) {
@@ -27,6 +69,29 @@ const updateCategory = async (req, res, next) => {
         return defaultResponse(res, [500, "Oops, something went wrong", ""]);
     }
 };
+
+const toggleCategoryIsActive = async (req, res, next) => {
+    try {
+        if (!req.category._id) {
+            return defaultResponse(res, [400, "Category ID is required", ""]);
+        }
+
+        const updatedCategory = await Category.findByIdAndUpdate(
+            req.category._id,
+            [{ $set: { isActive: { $not: "$isActive" } } }],
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedCategory) {
+            return defaultResponse(res, [404, "Category not found", ""]);
+        }
+
+        return defaultResponse(res, [200, "Category updated successfully", updatedCategory]);
+    } catch (error) {
+        console.error("Error toggling category status:", error);
+        return defaultResponse(res, [500, "Failed to update category", ""]);
+    }
+}
 
 const getCategory = async (req, res, next) => {
     try {
@@ -102,6 +167,7 @@ const getCategoriesOverview = async (req, res, next) => {
 module.exports = {
     createCategory,
     updateCategory,
+    toggleCategoryIsActive,
     getCategory,
     deleteCategory,
     getAllCategories,
