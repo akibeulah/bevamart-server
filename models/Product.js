@@ -23,8 +23,8 @@ const productSchema = new Schema(
         views: {type: Number, default: 0},
         inventory: [{type: mongoose.Schema.Types.ObjectId, ref: 'Inventory'}],
         hasVariants: {type: Boolean, default: false},
-        variants: [{type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant'}],
-        variantOptions: [{type: mongoose.Schema.Types.ObjectId, ref: 'ProductAttributeOption'}]
+        variantOptions: [{type: mongoose.Schema.Types.ObjectId, ref: 'ProductAttributeOption'}],
+        variants: [{type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant'}]
     },
     {
         timestamps: true,

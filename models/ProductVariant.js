@@ -7,7 +7,7 @@ const { Schema } = mongoose;
 const productVariantSchema = new Schema(
     {
         parentProduct: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
-        sku: { type: String, required: true, unique: true },
+        sku: { type: String, required: false, unique: true },
         attributeOptions: [{ type: mongoose.Schema.Types.ObjectId, ref: "ProductAttributeOption", required: true }],
         price: { type: Number, required: true },
         stock: { type: Number, required: true, default: 0 },

@@ -3,7 +3,7 @@ const { Schema } = mongoose;
 
 const productAttributeSchema = new Schema(
     {
-        name: { type: String, required: true, unique: true },
+        name: { type: String, required: true },
         description: { type: String },
         displayOrder: { type: Number, default: 0 }
     },
@@ -12,6 +12,9 @@ const productAttributeSchema = new Schema(
     }
 );
 
+productAttributeSchema.index({ name: 1, description: 1 }, {unique: true});
+
 const ProductAttribute = mongoose.model('ProductAttribute', productAttributeSchema);
 
 module.exports = ProductAttribute;
+
