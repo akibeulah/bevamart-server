@@ -81,6 +81,17 @@ updateHooks.forEach((hook) => {
     });
 });
 
+productSchema.post(/^find/, async function (docs) {
+    if (!docs) return;
+
+    if (Array.isArray(docs)) {
+        if (docs.length > 0) {
+            await Promise.all(docs.map(doc => doc.populate('category')));
+        }
+    } else {
+        await docs.populate('category');
+    }
+});
 const Product = mongoose.model('Product', productSchema);
 
 module.exports = Product;

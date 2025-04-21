@@ -5,7 +5,7 @@ const {
     incrementProductViews, getProductsOverview, getProductBySlug, createProductAttribute, createProductAttributeOption,
     getAllProductAttributes, updateProductAttribute, deleteProductAttribute, getAllProductAttributeOptions,
     getProductAttributeOption, updateProductAttributeOption, deleteProductAttributeOption, getProductAttribute,
-    createProductVariant, updateProductVariants, deleteProductVariant, getProductVariants, updateVariantStock
+    createProductVariant, updateProductVariant, deleteProductVariant, getProductVariants, updateVariantStock
 } = require('../services/productServices');
 const {verifyUserAuthenticated, verifyUserRoleAdmin, verifyUserAuthenticatedOptional} = require('../middleware/authenticationMiddleware');
 const {checkCategoryExistence, checkTypeExistence, checkProductExistence} = require('../middleware/productMiddleware');
@@ -49,6 +49,7 @@ router.get(
 router.get(
     "/products/id/:productId",
     checkProductExistence,
+    verifyUserAuthenticatedOptional,
     getProductById
 );
 
@@ -84,17 +85,16 @@ router.post(
 
 router.get(
     "/products/:productId/variants",
-    verifyUserAuthenticated,
     checkProductExistence,
     getProductVariants
 );
 
 router.put(
-    "/products/:productId/variants",
+    "/products/:productId/variants/:variantId",
     verifyUserAuthenticated,
     verifyUserRoleAdmin,
     checkProductExistence,
-    updateProductVariants
+    updateProductVariant
 );
 
 router.delete(

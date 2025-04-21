@@ -2,7 +2,6 @@ const Inventory = require("../models/Inventory");
 const WishList = require("../models/WishListItem");
 const Product = require("../models/Product");
 const {defaultResponse} = require("../utils/requestHelper");
-const Order = require("../models/Order");
 const CartItem = require("../models/CartItem");
 const Category = require("../models/Category");
 const Type = require("../models/Type");
@@ -230,18 +229,19 @@ const createProduct = async (req, res) => {
     }
 };
 
-const updateProduct = async (req, res, next) => {
+const updateProduct = async (req, res) => {
     try {
-        const {
+        let {
             name, brand, productImages, description, price, amount, unit,
-            tags, status, lowAlert, category, variantOptions, variants
+            tags, status, lowAlert, category
         } = req.body;
 
-        if (!name || !brand || !description) {
-            return defaultResponse(res, [400, "Missing required fields for product update", {
-                required: ["name", "brand", "description"]
-            }]);
-        }
+        if (!name)
+            name = req.product.name;
+        if (!brand)
+            brand = req.product.brand;
+        if (!description)
+            description = req.product.description;
 
         const existingProductWithSameSlug = await Product.find({name, brand});
         const isDuplicate = existingProductWithSameSlug.some(product =>
@@ -265,7 +265,6 @@ const updateProduct = async (req, res, next) => {
                 }
             } catch (error) {
                 console.error("Error parsing product images:", error);
-                // Keep existing images if parsing fails
                 cleanedProductImages = req.product.productImages || [];
             }
         }
@@ -285,23 +284,8 @@ const updateProduct = async (req, res, next) => {
         if (lowAlert !== undefined) updateData.lowAlert = lowAlert;
         if (category !== undefined) updateData.category = category;
 
-        if (variantOptions !== undefined || variants !== undefined) {
-            if (variantOptions && Array.isArray(variantOptions) && variantOptions.length > 0) {
-                updateData.hasVariants = true;
-                updateData.variantOptions = variantOptions;
 
-                if (variants && Array.isArray(variants) && variants.length > 0) {
-                    updateData.variants = variants;
-                } else if (variants !== undefined) {
-                    return defaultResponse(res, [400, "Invalid variants data provided", null]);
-                }
-            } else if (variantOptions !== undefined) {
-                updateData.hasVariants = false;
-                updateData.variantOptions = [];
-                updateData.variants = [];
-            }
-        }
-
+        // Update the base product
         const updatedProduct = await Product.findByIdAndUpdate(
             req.product._id,
             updateData,
@@ -312,12 +296,14 @@ const updateProduct = async (req, res, next) => {
             return defaultResponse(res, [404, "Product not found", null]);
         }
 
-        const formattedProduct = {
-            ...updatedProduct.toObject(),
-            price: (updatedProduct.price / 100).toFixed(2)
+        const responseData = {
+            product: {
+                ...updatedProduct.toObject(),
+                displayPrice: (updatedProduct.price / 100).toFixed(2)
+            }
         };
 
-        return defaultResponse(res, [200, "Product updated successfully", formattedProduct]);
+        return defaultResponse(res, [200, "Product updated successfully", responseData]);
     } catch (error) {
         console.error("Error updating product:", error);
 
@@ -335,7 +321,7 @@ const updateProduct = async (req, res, next) => {
     }
 };
 
-const getProductsOverview = async (req, res, next) => {
+const getProductsOverview = async (req, res) => {
     try {
         const newestProduct = await Product.findOne({}).sort({createdAt: -1}).limit(1);
         const mostViewedProducts = await Product.find({}).sort({views: -1}).limit(5);
@@ -357,7 +343,7 @@ const getProductsOverview = async (req, res, next) => {
         const productCounts = new Map();
 
         cartItems.forEach(item => {
-            const productId = item.product.toString();
+            const productId = item.product._id;
             productCounts.set(productId, (productCounts.get(productId) || 0) + 1);
         });
 
@@ -385,7 +371,7 @@ const getProductsOverview = async (req, res, next) => {
     }
 };
 
-const getAllProducts = async (req, res, next) => {
+const getAllProducts = async (req, res) => {
     try {
         const perPage = parseInt(req.query.perPage) || 20; // Default to 20 products per page
         const page = parseInt(req.query.page) || 1; // Default to the first page
@@ -399,13 +385,12 @@ const getAllProducts = async (req, res, next) => {
             query.status = 'archive';
         }
 
-        // Perform pagination
         const products = await Product.find(query)
-            .populate('variant')
+            .sort({ createdAt: -1 })
+            .populate('variants')
             .skip((page - 1) * perPage)
             .limit(perPage);
 
-        // Fetch inventory quantities for each product
         const productsWithInventory = await Promise.all(products.map(async (product) => {
             const inventoryEntries = await Inventory.find({product: product._id});
             let inStock = 0;
@@ -433,9 +418,18 @@ const getAllProducts = async (req, res, next) => {
     }
 };
 
-const getProductById = async (req, res, next) => {
+const getProductById = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.productId)
+        let product = await Product.findById(req.params.productId).populate("variants")
+        if (!product)
+            return defaultResponse(res, [404, "Product not found!", null])
+
+        if (req.user_id)
+            product = {
+                ...product.toObject(),
+                isInWishList: await checkItemInAuthenticatedUserWishList(req.user_id, product.id)
+            }
+
 
         return defaultResponse(res, [200, "Product retrieved successfully", product]);
     } catch (error) {
@@ -444,9 +438,9 @@ const getProductById = async (req, res, next) => {
     }
 };
 
-const getProductBySlug = async (req, res, next) => {
+const getProductBySlug = async (req, res) => {
     try {
-        let product = await Product.findOne({slug: req.params.productSlug})
+        let product = await Product.findOne({slug: req.params.productSlug}).populate("variants")
         if (!product)
             return defaultResponse(res, [404, "Product not found!", null])
 
@@ -463,7 +457,7 @@ const getProductBySlug = async (req, res, next) => {
     }
 };
 
-const deleteProduct = async (req, res, next) => {
+const deleteProduct = async (req, res) => {
     try {
         const deletedProduct = await Product.findByIdAndDelete(req.product._id);
         return defaultResponse(res, [200, "Product deleted successfully", deletedProduct]);
@@ -473,7 +467,7 @@ const deleteProduct = async (req, res, next) => {
     }
 };
 
-const incrementProductViews = async (req, res, next) => {
+const incrementProductViews = async (req, res) => {
     try {
         await Product.findByIdAndUpdate(
             req.product._id,
@@ -487,7 +481,7 @@ const incrementProductViews = async (req, res, next) => {
     }
 };
 
-const searchProducts = async (req, res, next) => {
+const searchProducts = async (req, res) => {
     try {
         const page = parseInt(req.body.page) || 1;
         const perPage = parseInt(req.body.perPage) || 20;
@@ -495,24 +489,24 @@ const searchProducts = async (req, res, next) => {
 
         const filters = {};
 
-        // Extracting other filters from the request body
-        const {brand, category, type, amount, priceRange, tags, sort, skinType, skinConcern, pregnancySafe} = req.body;
+        // Extracting filters from the request body
+        const { brand, category, type, amount, priceRange, tags, sort } = req.body;
 
-        // Applying other filters
+        // Applying filters
         if (brand && Array.isArray(brand)) {
-            filters.brand = {$in: brand.map(brand => new RegExp(brand, "i"))};
+            filters.brand = { $in: brand.map(b => new RegExp(b, "i")) };
         }
 
         if (category && Array.isArray(category)) {
-            const categoryDocs = await Category.find({name: {$in: category}});
+            const categoryDocs = await Category.find({ name: { $in: category } });
             const categoryIds = categoryDocs.map(cat => cat._id);
-            filters.category = {$in: categoryIds};
+            filters.category = { $in: categoryIds };
         }
 
         if (type && Array.isArray(type)) {
-            const typeDocs = await Type.find({name: {$in: type}});
-            const typeIds = typeDocs.map(cat => cat._id);
-            filters.type = {$in: typeIds};
+            const typeDocs = await Type.find({ name: { $in: type } });
+            const typeIds = typeDocs.map(t => t._id);
+            filters.type = { $in: typeIds };
         }
 
         if (amount) {
@@ -521,64 +515,53 @@ const searchProducts = async (req, res, next) => {
 
         if (priceRange) {
             const [minPrice, maxPrice] = priceRange.split("-");
-            filters.price = {$gte: minPrice, $lte: maxPrice};
+            filters.price = {
+                $gte: parseInt(minPrice) * 100,
+                $lte: parseInt(maxPrice) * 100
+            };
         }
 
-        if (tags) {
-            filters.tags = {$regex: tags, $options: "i"};
-        }
-
-        if (skinType && Array.isArray(skinType)) {
-            filters.skinType = {$in: skinType.map(type => new RegExp(type, "i"))};
-        }
-
-        if (skinConcern && Array.isArray(skinConcern)) {
-            filters.skinConcern = {$in: skinConcern.map(concern => new RegExp(concern, "i"))};
-        }
-
-        if (typeof pregnancySafe === 'boolean') {
-            filters.pregnancySafe = pregnancySafe;
+        if (tags && Array.isArray(tags)) {
+            filters.tags = { $in: tags.map(tag => new RegExp(tag, "i")) };
         }
 
         // Search query for name, brand, description, and tags
         const query = req.body.query || '';
         const searchFilters = {
             $or: [
-                {name: {$regex: query, $options: "i"}},
-                {brand: {$regex: query, $options: "i"}},
-                {description: {$regex: query, $options: "i"}},
-                {tags: {$regex: query, $options: "i"}},
-                {skinConcern: {$regex: query, $options: "i"}},
-                {skinType: {$regex: query, $options: "i"}},
+                { name: { $regex: query, $options: "i" } },
+                { brand: { $regex: query, $options: "i" } },
+                { description: { $regex: query, $options: "i" } },
+                { tags: { $regex: query, $options: "i" } }
             ]
         };
 
         // Combine search filter with other filters
-        const finalFilters = {$and: [searchFilters, filters]};
+        const finalFilters = { $and: [searchFilters, filters] };
 
         // Sort logic
-        let sortOption = {};
+        let sortOption;
         switch (sort) {
             case 'alphabetical':
-                sortOption = {name: 1};
+                sortOption = { name: 1 };
                 break;
             case 'newest':
-                sortOption = {createdAt: -1};
+                sortOption = { createdAt: -1 };
                 break;
             case 'best_selling':
-                sortOption = {views: -1};
+                sortOption = { views: -1 };
                 break;
             case 'oldest':
-                sortOption = {createdAt: 1};
+                sortOption = { createdAt: 1 };
                 break;
             case 'most_expensive':
-                sortOption = {price: -1};
+                sortOption = { price: -1 };
                 break;
             case 'least_expensive':
-                sortOption = {price: 1};
+                sortOption = { price: 1 };
                 break;
             default:
-                sortOption = {}; // No sorting
+                sortOption = { createdAt: -1 }; // Default sort by newest
         }
 
         // Count total documents based on filters
@@ -596,42 +579,133 @@ const searchProducts = async (req, res, next) => {
                 select: 'name _id'
             })
             .populate({
-                path: 'productsBestUsedWith',
-                select: 'name _id'
+                path: 'variants',
+                select: 'price stock images attributeOptions',
+                populate: {
+                    path: 'attributeOptions',
+                    populate: {
+                        path: 'attribute'
+                    }
+                }
             })
             .skip(skip)
             .limit(perPage)
             .sort(sortOption);
 
-        const allProducts = await Product.find(finalFilters).select('skinConcern skinType brand');
-        const skinTypesInResults = [...new Set(allProducts.flatMap(product => product.skinType))];
-        const skinConcernsInResults = [...new Set(allProducts.flatMap(product => product.skinConcern))];
-        const brandsInResults = [...new Set(allProducts.flatMap(product => product.brand))];
+        // Generate metadata from search results for filtering options
+        // Fetch all products matching query without pagination for metadata
+        const metadataProducts = await Product.find(finalFilters)
+            .select('brand tags price category variantOptions')
+            .populate({
+                path: 'category',
+                select: 'name _id'
+            })
+            .populate({
+                path: 'variantOptions',
+                select: 'value displayName attribute',
+                populate: {
+                    path: 'attribute',
+                    select: 'name _id'
+                }
+            });
 
-        const newProducts = [];
-        if (req.user_id) {
-            for (let i = 0; i < products.length; i++) {
-                newProducts.push({
-                    ...products[i].toObject(),
-                    isInWishList: await checkItemInAuthenticatedUserWishList(req.user_id, products[i].id)
+        // Extract metadata for filters
+        const brandsInResults = [...new Set(metadataProducts.map(product => product.brand))];
+
+        // Extract tags from all result products
+        const tagsInResults = [...new Set(metadataProducts.flatMap(product =>
+            product.tags ? product.tags : []))];
+
+        // Extract categories from all result products
+        const categoriesInResults = metadataProducts
+            .map(product => product.category)
+            .filter(category => category) // Filter out null/undefined
+            .reduce((acc, category) => {
+                // Check if category already exists in accumulator
+                if (!acc.some(c => c._id.toString() === category._id.toString())) {
+                    acc.push({ _id: category._id, name: category.name });
+                }
+                return acc;
+            }, []);
+
+        // Get min and max prices
+        const prices = metadataProducts.map(product => product.price);
+        const minPrice = prices.length > 0 ? Math.min(...prices) / 100 : 0;
+        const maxPrice = prices.length > 0 ? Math.max(...prices) / 100 : 0;
+
+        // Extract attributes and their options
+        const attributesMap = new Map();
+
+        metadataProducts.forEach(product => {
+            if (product.variantOptions && product.variantOptions.length > 0) {
+                product.variantOptions.forEach(option => {
+                    if (option.attribute) {
+                        const attrId = option.attribute._id.toString();
+                        const attrName = option.attribute.name;
+
+                        if (!attributesMap.has(attrId)) {
+                            attributesMap.set(attrId, {
+                                _id: attrId,
+                                name: attrName,
+                                options: []
+                            });
+                        }
+
+                        const attr = attributesMap.get(attrId);
+                        if (!attr.options.some(opt => opt._id.toString() === option._id.toString())) {
+                            attr.options.push({
+                                _id: option._id,
+                                value: option.value,
+                                displayName: option.displayName
+                            });
+                        }
+                    }
                 });
             }
+        });
+
+        const attributesInResults = Array.from(attributesMap.values());
+
+        // Add wishlist info if user is authenticated
+        const productsWithWishlist = [];
+        if (req.user_id) {
+            for (const product of products) {
+                productsWithWishlist.push({
+                    ...product.toObject(),
+                    displayPrice: (product.price / 100).toFixed(2),
+                    isInWishList: await checkItemInAuthenticatedUserWishList(req.user_id, product._id)
+                });
+            }
+        } else {
+            // Format products for non-authenticated users
+            products.forEach(product => {
+                productsWithWishlist.push({
+                    ...product.toObject(),
+                    displayPrice: (product.price / 100).toFixed(2)
+                });
+            });
         }
 
         return defaultResponse(res, [200, "Products retrieved successfully", {
             page,
             perPage,
             totalPages,
+            totalCount,
             metadata: {
-                brandsInResults,
-                skinConcernsInResults,
-                skinTypesInResults
+                brands: brandsInResults,
+                tags: tagsInResults,
+                categories: categoriesInResults,
+                priceRange: {
+                    min: minPrice,
+                    max: maxPrice
+                },
+                attributes: attributesInResults
             },
-            Products: newProducts.length === 0 ? products : newProducts
+            products: productsWithWishlist
         }]);
     } catch (error) {
-        console.log(error);
-        return defaultResponse(res, [500, "Oops, something went wrong", error]);
+        console.error("Error searching products:", error);
+        return defaultResponse(res, [500, "Error searching products", { message: error.message }]);
     }
 };
 
@@ -686,29 +760,6 @@ const createProductAttribute = async (req, res) => {
         return defaultResponse(res, [500, "Error creating product attribute", error]);
     }
 }
-
-const getProductAttribute = async (req, res) => {
-    const {id} = req.params;
-
-    try {
-        const productAttribute = await ProductAttribute.findById(id);
-
-        if (!productAttribute) {
-            return defaultResponse(res, [404, "Product attribute not found", null]);
-        }
-
-        // Get associated options
-        const options = await ProductAttributeOption.find({attribute: id});
-
-        return defaultResponse(res, [200, "Product attribute retrieved successfully", {
-            productAttribute,
-            options
-        }]);
-    } catch (error) {
-        console.error(error);
-        return defaultResponse(res, [500, "Error retrieving product attribute", error]);
-    }
-};
 
 const getAllProductAttributes = async (req, res) => {
     try {
@@ -802,19 +853,128 @@ const createProductAttributeOption = async (req, res) => {
 }
 
 const getProductAttributeOption = async (req, res) => {
-    const {id} = req.params;
+    const { id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    // Convert to numbers
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
 
     try {
+        // Find the option and populate its attribute
         const option = await ProductAttributeOption.findById(id).populate('attribute');
 
         if (!option) {
             return defaultResponse(res, [404, "Product attribute option not found", null]);
         }
 
-        return defaultResponse(res, [200, "Product attribute option retrieved successfully", option]);
+        // Find products that have this option in their variantOptions array
+        const productsQuery = Product.find({
+            $or: [
+                { variantOptions: id },
+                { 'variants.attributeOptions': id }
+            ]
+        });
+
+        // Count total products for pagination
+        const totalProducts = await Product.countDocuments({
+            $or: [
+                { variantOptions: id },
+                { 'variants.attributeOptions': id }
+            ]
+        });
+
+        // Apply pagination
+        const products = await productsQuery
+            .skip((pageNum - 1) * limitNum)
+            .limit(limitNum)
+            .populate('category');
+
+        // Format products with price display
+        const formattedProducts = products.map(product => ({
+            ...product.toObject(),
+            displayPrice: (product.price / 100).toFixed(2)
+        }));
+
+        return defaultResponse(res, [200, "Product attribute option retrieved successfully", {
+            option,
+            products: {
+                items: formattedProducts,
+                totalItems: totalProducts,
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalProducts / limitNum),
+                limit: limitNum
+            }
+        }]);
     } catch (error) {
         console.error(error);
         return defaultResponse(res, [500, "Error retrieving product attribute option", error]);
+    }
+};
+
+const getProductAttribute = async (req, res) => {
+    const { id } = req.params;
+    const { page = 1, perPage = 10 } = req.query;
+
+    // Convert to numbers
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(perPage, 10);
+
+    try {
+        const productAttribute = await ProductAttribute.findById(id);
+
+        if (!productAttribute) {
+            return defaultResponse(res, [404, "Product attribute not found", null]);
+        }
+
+        // Get associated options
+        const options = await ProductAttributeOption.find({ attribute: id });
+
+        // Get option IDs for product search
+        const optionIds = options.map(option => option._id);
+
+        // Find products that have any of these options
+        const productsQuery = Product.find({
+            $or: [
+                { variantOptions: { $in: optionIds } },
+                { 'variants.attributeOptions': { $in: optionIds } }
+            ]
+        });
+
+        // Count total products for pagination
+        const totalProducts = await Product.countDocuments({
+            $or: [
+                { variantOptions: { $in: optionIds } },
+                { 'variants.attributeOptions': { $in: optionIds } }
+            ]
+        });
+
+        // Apply pagination
+        const products = await productsQuery
+            .skip((pageNum - 1) * limitNum)
+            .limit(limitNum)
+            .populate('category');
+
+        // Format products with price display
+        const formattedProducts = products.map(product => ({
+            ...product.toObject(),
+            displayPrice: (product.price / 100).toFixed(2)
+        }));
+
+        return defaultResponse(res, [200, "Product attribute retrieved successfully", {
+            productAttribute,
+            options,
+            products: {
+                items: formattedProducts,
+                totalItems: totalProducts,
+                currentPage: pageNum,
+                totalPages: Math.ceil(totalProducts / limitNum),
+                limit: limitNum
+            }
+        }]);
+    } catch (error) {
+        console.error(error);
+        return defaultResponse(res, [500, "Error retrieving product attribute", error]);
     }
 };
 
@@ -885,184 +1045,126 @@ const deleteProductAttributeOption = async (req, res) => {
 };
 
 /**
- * Updates product variants
+ * Updates a single product variant
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
-const updateProductVariants = async (req, res) => {
+const updateProductVariant = async (req, res) => {
     try {
-        const { productId } = req.params;
-        const { variants, variantOptions } = req.body;
+        const { productId, variantId } = req.params;
+        const {
+            sku,
+            price,
+            images,
+            lowAlert,
+            attributeOptions
+        } = req.body;
 
         // Validate input
         if (!productId) {
             return defaultResponse(res, [400, "Product ID is required", null]);
         }
 
-        // Find the product
+        if (!variantId) {
+            return defaultResponse(res, [400, "Variant ID is required", null]);
+        }
+
         const product = await Product.findById(productId);
         if (!product) {
             return defaultResponse(res, [404, "Product not found", null]);
         }
 
-        // Validate variant options if provided
-        if (variantOptions) {
-            if (!Array.isArray(variantOptions) || variantOptions.length === 0) {
-                return defaultResponse(res, [400, "variantOptions must be a non-empty array", null]);
-            }
+        const variant = await ProductVariant.findById(variantId);
+        if (!variant) {
+            return defaultResponse(res, [404, "Variant not found", null]);
+        }
 
-            // Verify all variant options exist
-            const optionIds = variantOptions.map(option => typeof option === 'string' ? option : option._id);
-            const existingOptions = await ProductAttributeOption.find({ _id: { $in: optionIds } });
+        // Verify that variant belongs to the product
+        if (variant.parentProduct.toString() !== product._id.toString()) {
+            return defaultResponse(res, [400, "Variant does not belong to the product", null]);
+        }
+
+        // Prepare update data
+        const updateData = {};
+
+        if (sku !== undefined) updateData.sku = sku;
+        if (price !== undefined) updateData.price = Math.round(price * 100);
+        if (lowAlert !== undefined) updateData.lowAlert = lowAlert;
+
+        // Process attributeOptions if provided
+        if (attributeOptions && Array.isArray(attributeOptions) && attributeOptions.length > 0) {
+            // Validate that all attribute options exist in the database
+            const optionIds = attributeOptions.map(option =>
+                typeof option === 'string' ? option : option._id
+            );
+
+            const existingOptions = await ProductAttributeOption.find({_id: {$in: optionIds}});
 
             if (existingOptions.length !== optionIds.length) {
                 const foundIds = existingOptions.map(opt => opt._id.toString());
                 const missingIds = optionIds.filter(id => !foundIds.includes(id.toString()));
 
-                return defaultResponse(res, [400, "Some variant options do not exist", {
+                return defaultResponse(res, [400, "Some attribute options do not exist", {
                     missingOptionIds: missingIds
                 }]);
             }
 
-            // Update product's variant options
-            product.variantOptions = optionIds;
+            updateData.attributeOptions = optionIds;
         }
 
-        // Process variants
-        const updatedVariants = [];
-        const newVariants = [];
-        const variantErrors = [];
-
-        if (variants && Array.isArray(variants)) {
-            // Process each variant
-            for (const variant of variants) {
-                try {
-                    // Determine if this is an update or a new variant
-                    if (variant._id) {
-                        // Update existing variant
-                        const existingVariant = await ProductVariant.findById(variant._id);
-
-                        if (!existingVariant) {
-                            variantErrors.push({
-                                variantId: variant._id,
-                                error: "Variant not found"
-                            });
-                            continue;
-                        }
-
-                        // Update fields if provided
-                        if (variant.sku !== undefined) existingVariant.sku = variant.sku;
-                        if (variant.attributeOptions !== undefined) existingVariant.attributeOptions = variant.attributeOptions;
-                        if (variant.price !== undefined) existingVariant.price = Math.round(variant.price * 100);
-                        if (variant.stock !== undefined) existingVariant.stock = variant.stock;
-                        if (variant.images !== undefined) existingVariant.images = variant.images;
-                        if (variant.active !== undefined) existingVariant.active = variant.active;
-                        if (variant.lowAlert !== undefined) existingVariant.lowAlert = variant.lowAlert;
-
-                        await existingVariant.save();
-                        updatedVariants.push(existingVariant);
-                    } else {
-                        // Create new variant
-                        // Validate required fields
-                        if (!variant.attributeOptions || variant.price === undefined) {
-                            variantErrors.push({
-                                sku: variant.sku || 'Unknown',
-                                error: "Missing required fields (attributeOptions, price)"
-                            });
-                            continue;
-                        }
-
-                        const newVariant = new ProductVariant({
-                            parentProduct: product._id,
-                            sku: variant.sku || `${product._id.toString().slice(-6)}-${Date.now()}`,
-                            attributeOptions: variant.attributeOptions,
-                            price: Math.round(variant.price * 100),
-                            stock: variant.stock || 0,
-                            images: variant.images || [],
-                            active: variant.active !== false,
-                            lowAlert: variant.lowAlert || 0
-                        });
-
-                        await newVariant.save();
-                        newVariants.push(newVariant);
-
-                        // Create inventory entry if stock > 0
-                        if (variant.stock > 0) {
-                            const variantStockIn = new Inventory({
-                                product: product._id,
-                                variant: newVariant._id,
-                                action: "stock_in",
-                                quantity: variant.stock,
-                                user_id: req.user_id,
-                                description: `Stock added for variant ${newVariant.sku}`
-                            });
-                            await variantStockIn.save();
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error processing variant:", error);
-                    variantErrors.push({
-                        variantId: variant._id || 'New variant',
-                        sku: variant.sku || 'Unknown',
-                        error: error.message
-                    });
+        // Process images if provided
+        let cleanedImages = [];
+        if (Array.isArray(images)) {
+            cleanedImages = images;
+        } else if (images) {
+            try {
+                cleanedImages = JSON.parse(images);
+                if (!Array.isArray(cleanedImages)) {
+                    cleanedImages = [];
                 }
+            } catch (error) {
+                console.error("Error parsing variant images:", error);
+                // Keep existing images if parsing fails
+                cleanedImages = variant.images || [];
             }
-
-            // Update product's variants array with all current variants
-            const currentVariants = await ProductVariant.find({ parentProduct: product._id });
-            product.variants = currentVariants.map(v => v._id);
         }
 
-        // Update product's hasVariants status
-        const hasAnyVariants = (await ProductVariant.countDocuments({ parentProduct: product._id })) > 0;
-        product.hasVariants = hasAnyVariants;
-
-        // If hasVariants is false, remove variantOptions
-        if (!product.hasVariants) {
-            product.variantOptions = [];
+        if (images !== undefined) {
+            updateData.images = cleanedImages;
         }
 
-        await product.save();
+        // Update the variant
+        const updatedVariant = await ProductVariant.findByIdAndUpdate(
+            variantId,
+            updateData,
+            {new: true, runValidators: true}
+        );
 
-        // Prepare response data
+        if (!updatedVariant) {
+            return defaultResponse(res, [404, "Failed to update variant", null]);
+        }
+
+        // Format the response
         const responseData = {
-            product: {
-                ...product.toObject(),
-                displayPrice: (product.price / 100).toFixed(2)
-            },
-            updatedVariants: updatedVariants.map(v => ({
-                ...v.toObject(),
-                displayPrice: (v.price / 100).toFixed(2)
-            })),
-            newVariants: newVariants.map(v => ({
-                ...v.toObject(),
-                displayPrice: (v.price / 100).toFixed(2)
-            }))
+            variant: {
+                ...updatedVariant.toObject(),
+                displayPrice: (updatedVariant.price / 100).toFixed(2)
+            }
         };
 
-        if (variantErrors.length > 0) {
-            responseData.variantErrors = variantErrors;
-        }
-
-        // Determine status and message
-        let statusCode = 200;
-        let message = "Product variants updated successfully";
-
-        if (variantErrors.length > 0) {
-            if (updatedVariants.length === 0 && newVariants.length === 0) {
-                statusCode = 400;
-                message = "Failed to update any variants";
-            } else {
-                statusCode = 207;
-                message = "Some variant updates failed";
-            }
-        }
-
-        return defaultResponse(res, [statusCode, message, responseData]);
+        return defaultResponse(res, [200, "Variant updated successfully", responseData]);
     } catch (error) {
-        console.error("Error updating product variants:", error);
-        return defaultResponse(res, [500, "Error updating product variants", {
+        console.error("Error updating product variant:", error);
+
+        if (error.name === 'ValidationError') {
+            return defaultResponse(res, [400, "Validation error", error.errors]);
+        }
+
+        if (error.code === 11000) {
+            return defaultResponse(res, [400, "Duplicate key error", error.keyValue]);
+        }
+
+        return defaultResponse(res, [500, "Error updating product variant", {
             message: error.message
         }]);
     }
@@ -1428,7 +1530,7 @@ module.exports = {
     searchProducts,
     incrementProductViews,
     getProductsOverview,
-    updateProductVariants,
+    updateProductVariant,
     deleteProductVariant,
     getProductVariants,
     updateVariantStock,
