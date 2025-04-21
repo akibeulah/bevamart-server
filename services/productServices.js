@@ -17,9 +17,8 @@ const createProduct = async (req, res) => {
         const {
             name, brand, productImages, description, price,
             amount, unit, stock, tags, status,
-            lowAlert, variantOptions, variants
+            lowAlert, variants
         } = req.body;
-
         // Validate required fields
         if (!name || !brand || !description || price === undefined) {
             return defaultResponse(res, [400, "Missing required product fields", {
@@ -52,18 +51,12 @@ const createProduct = async (req, res) => {
         };
 
         // Check if product has variants
-        const hasVariants = variantOptions && Array.isArray(variantOptions) && variantOptions.length > 0;
+        const hasVariants = variants && Array.isArray(variants) && variants.length > 0;
 
         if (hasVariants) {
-            // Validate variants are provided when variant options are set
-            if (!variants || !Array.isArray(variants) || variants.length < 1) {
-                return defaultResponse(res, [400, "Product with variants must have at least one variant defined", null]);
-            }
-
             // Validate that all variant options exist in the database
-            const optionIds = variantOptions.map(option => typeof option === 'string' ? option : option._id);
+            const optionIds = variants.flatMap(v => v.attributeOptions).map(option => typeof option === 'string' ? option : option._id);
             const existingOptions = await ProductAttributeOption.find({_id: {$in: optionIds}});
-
             if (existingOptions.length !== optionIds.length) {
                 const foundIds = existingOptions.map(opt => opt._id.toString());
                 const missingIds = optionIds.filter(id => !foundIds.includes(id.toString()));
@@ -699,7 +692,7 @@ const searchProducts = async (req, res) => {
                     min: minPrice,
                     max: maxPrice
                 },
-                attributes: attributesInResults
+                attributes: attributesInResults,
             },
             products: productsWithWishlist
         }]);
