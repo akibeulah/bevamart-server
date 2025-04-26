@@ -24,7 +24,8 @@ const productSchema = new Schema(
         inventory: [{type: mongoose.Schema.Types.ObjectId, ref: 'Inventory'}],
         hasVariants: {type: Boolean, default: false},
         variantOptions: [{type: mongoose.Schema.Types.ObjectId, ref: 'ProductAttributeOption'}],
-        variants: [{type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant'}]
+        variants: [{type: mongoose.Schema.Types.ObjectId, ref: 'ProductVariant'}],
+        productVariantGroup: {type: String}
     },
     {
         timestamps: true,

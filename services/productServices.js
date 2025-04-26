@@ -17,7 +17,7 @@ const createProduct = async (req, res) => {
         const {
             name, brand, productImages, description, price,
             amount, unit, stock, tags, status,
-            lowAlert, variants
+            lowAlert, variants, productVariantGroup
         } = req.body;
         // Validate required fields
         if (!name || !brand || !description || price === undefined) {
@@ -47,7 +47,8 @@ const createProduct = async (req, res) => {
             category: req.category?._id,
             tags: Array.isArray(tags) ? tags : [],
             lowAlert: lowAlert || 0,
-            status: status || 'active'
+            status: status || 'active',
+            productVariantGroup
         };
 
         // Check if product has variants
@@ -226,7 +227,7 @@ const updateProduct = async (req, res) => {
     try {
         let {
             name, brand, productImages, description, price, amount, unit,
-            tags, status, lowAlert, category
+            tags, status, lowAlert, category, productVariantGroup
         } = req.body;
 
         if (!name)
@@ -276,6 +277,7 @@ const updateProduct = async (req, res) => {
         if (status !== undefined) updateData.status = status;
         if (lowAlert !== undefined) updateData.lowAlert = lowAlert;
         if (category !== undefined) updateData.category = category;
+        if (productVariantGroup !== undefined) updateData.productVariantGroup = productVariantGroup;
 
 
         // Update the base product
