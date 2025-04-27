@@ -32,7 +32,7 @@ router.get(
 );
 
 router.get(
-    '/carts',
+    '/carts-overview',
     verifyUserAuthenticated,
     getAllCarts
 );
@@ -40,20 +40,23 @@ router.get(
 router.post(
     '/carts/cart-item',
     verifyUserAuthenticated,
-    addItemToCart
+    addItemToCart,
+    getCartWithItems
 );
 
 router.post(
     '/carts/cart-item/multiple',
     verifyUserAuthenticated,
-    addMultipleItemsToCart
+    addMultipleItemsToCart,
+    getCartWithItems
 );
 
 router.delete(
     '/carts/cart-item/:cartItemId',
     verifyUserAuthenticated,
     checkCartItemExistence,
-    deleteCartItem
+    deleteCartItem,
+    getCartWithItems
 )
 
 module.exports = router;

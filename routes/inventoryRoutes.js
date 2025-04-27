@@ -1,5 +1,5 @@
 const express = require('express');
-const { createInventory, getAllInventoryByProduct, deleteInventory, getInventoryById, inventoryOverview} = require('../services/inventoryServices');
+const { createInventory, getAllInventoryByProduct, deleteInventory, getInventoryById, inventoryOverview, getAllInventoryByProductVariant} = require('../services/inventoryServices');
 const { verifyUserAuthenticated, verifyUserRoleAdmin } = require('../middleware/authenticationMiddleware');
 const router = express.Router();
 
@@ -22,6 +22,14 @@ router.get(
     verifyUserAuthenticated,
     verifyUserRoleAdmin,
     getAllInventoryByProduct
+);
+
+
+router.get(
+    "/inventory/product-variant/:variantId",
+    verifyUserAuthenticated,
+    verifyUserRoleAdmin,
+    getAllInventoryByProductVariant
 );
 
 router.get(

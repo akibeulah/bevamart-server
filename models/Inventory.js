@@ -6,6 +6,7 @@ const inventorySchema = new Schema(
         product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
         action: { type: String, enum: ['stock_in', 'stock_out'], required: true },
         quantity: { type: Number, required: true },
+        variant: { type: mongoose.Schema.Types.ObjectId, ref: "ProductVariant" },
         user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         description: String,
         active: { type: Boolean, default: true }
