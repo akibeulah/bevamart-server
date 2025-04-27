@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Cancellation - TheSkintyShop</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #F2EBFF;
+            font-size: 12px;
+            text-align: left;
+        }
+
+        .header {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .svg-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+        }
+
+        .greeting {
+            padding: 20px 20px 0;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo img {
+            max-width: 200px;
+        }
+
+        h1, p {
+            color: #333333;
+        }
+
+        table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 8px;
+        }
+
+        th {
+            text-align: center;
+        }
+
+        .order-details {
+            padding: 20px 20px 0;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+        }
+
+        .item img {
+            width: 50px;
+            height: 50px;
+            margin-right: 10px;
+        }
+
+        .footer {
+            background: #6F20E1;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+            border-radius: 0 0 8px 8px;
+            margin-top: 20px;
+        }
+
+        .contact-info p,
+        .contact-info a,
+        .terms a,
+        .terms a:visited,
+        .terms p {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .terms a {
+            text-decoration: underline;
+        }
+
+        .cancellation-notice {
+            background-color: #fff0f0;
+            border-left: 4px solid #ff5252;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 4px;
+        }
+
+        .cancellation-notice h3 {
+            color: #d32f2f;
+            margin-top: 0;
+        }
+
+        .cancellation-reason {
+            font-style: italic;
+            margin: 10px 0;
+        }
+
+        .action-button {
+            display: inline-block;
+            background-color: #6F20E1;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body bgcolor="#F2EBFF" style="background: #F2EBFF">
+<div class="header">
+    <img src="https://www.theskintyshopng.com/cdn/shop/files/Skinty_Shop_logo_200x.png?v=1648217218"
+         alt="TheSkintyShop Logo">
+</div>
+<div class="container">
+    <div class="greeting">
+        <h1>Hi {{first_name}},</h1>
+        <p>We're sorry to inform you that your order <strong>#{{order_number}}</strong> has been cancelled.</p>
+    </div>
+
+    <div class="cancellation-notice">
+        <h3>Order Cancellation</h3>
+        <p>Your order has been cancelled for the following reason:</p>
+        <p class="cancellation-reason">{{cancellation_reason}}</p>
+        <p>{{additional_message}}</p>
+    </div>
+
+    <div class="order-details">
+        <h2>Order Summary:</h2>
+        <table>
+            <tr>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Amount</th>
+            </tr>
+            {{order_items}}
+        </table>
+        <table style="width: 75%; border-collapse: collapse; margin-left: auto;">
+            <tr>
+                <td style="text-align: left;">Total Amount:</td>
+                <td style="text-align: right;">{{total_amount}}</td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Delivery Charge:</td>
+                <td style="text-align: right;">{{delivery_charge}}</td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Discount {{discount_data}}:</td>
+                <td style="text-align: right;">{{discount_amount}}</td>
+            </tr>
+            <tr>
+                <td style="text-align: left;">Total:</td>
+                <td style="text-align: right;">{{order_total}}</td>
+            </tr>
+        </table>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <p>Would you like to place a new order?</p>
+            <a href="https://www.theskintyshopng.com" class="action-button">Shop Now</a>
+        </div>
+    </div>
+    <div class="footer">
+        <div class="contact-info">
+            <p>Stay connected with us:</p>
+            <p>Follow us on <a href="https://www.instagram.com/theskintyshop/">Instagram</a> | <a
+                    href="https://www.facebook.com/theskintyshop/">Facebook</a></p>
+            <p>Email us: info@theskintyshop.com</p>
+            <p>Call us: +1 (123) 456-7890</p>
+        </div>
+        <div class="terms">
+            <p>By shopping with us, you agree to our <a href="#" class="terms">Terms of Service</a> and <a href="#"
+                                                                                                           class="terms">Refund Policy</a>.</p>
+        </div>
+    </div>
+</div>
+<br>
+<br>
+<br>
+<br>
+<br>
+</body>
+
+</html>

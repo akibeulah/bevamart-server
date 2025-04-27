@@ -19,12 +19,12 @@ const orderSchema = new Schema(
         shipping_cost: Number,
         status: {
             type: String,
-            enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'],
+            enum: ['pending', 'vendor_preparing_order', 'order_ready_for_delivery', 'order_out_for_delivery', 'delivery_confirmed'],
             default: "pending"
         },
         payment: {
             type: String,
-            enum: ['unpaid', 'pay_on_delivery', 'paystack', 'nomba', 'bank_deposit', 'manual'],
+            enum: ['unpaid', 'pay_on_delivery', 'paystack', 'refunded'],
             default: 'unpaid'
         },
         payment_made_at: Date,
@@ -37,7 +37,8 @@ const orderSchema = new Schema(
         cart: {type: mongoose.Schema.Types.ObjectId, ref: "Cart", required: true},
         cart_final_state: String,
         notes: String,
-        source: {type: String}
+        source: {type: String},
+        orderPSPaymentCode: {type: String},
     },
     {
         timestamps: true
@@ -51,7 +52,6 @@ orderSchema.pre('save', async function (next) {
     try {
         const now = new Date();
         const dateStr = now.toISOString().slice(2, 8).replace(/-/g, '');
-        const timeStr = now.toISOString().slice(11, 19).replace(/:/g, '');
 
         const todayOrdersCount = await this.model('Order').countDocuments({
             createdAt: {
@@ -60,15 +60,42 @@ orderSchema.pre('save', async function (next) {
             },
         });
 
-        const orderCode = `TSS${dateStr}${timeStr}${String(todayOrdersCount + 1).padStart(6, '0')}`;
+        const orderCode = `BM${dateStr}${String(todayOrdersCount + 1).padStart(6, '0')}`;
         this.order_code = orderCode;
 
         const htmlFile = await fs.readFile("./mailer/emailTemplates/newOrderEmailTemplate.html", 'utf-8');
 
-        const cartItems = await CartItem.find({parent: this.cart});
+        const cartItems = await CartItem.find({parent: this.cart})
+            .populate('product')
+            .populate({
+                path: 'variant',
+                populate: {
+                    path: 'attributeOptions',
+                    populate: {
+                        path: 'attribute'
+                    }
+                }
+            });
         const orderItems = await Promise.all(cartItems.map(async (cartItem) => {
-            const targetProduct = await Product.findById(cartItem.product);
-            return `<tr><td class="item"><img src="${(targetProduct.productImages && targetProduct.productImages.length > 0) ? targetProduct.productImages[0] : ""}" alt="Product 1">${targetProduct.brand} - ${targetProduct.name}</td><td style="text-align: center;">${cartItem.quantity}</td><td style="text-align: right;">${formatPrice(targetProduct.price)}</td></tr>`;
+            const product = cartItem.product;
+            let itemName = `${product.brand} - ${product.name}`;
+            let itemImage = (product.productImages && product.productImages.length > 0) ? product.productImages[0] : "";
+            let itemPrice = formatPrice(cartItem.price);
+
+            if (cartItem.variant) {
+                if (cartItem.variant.images && cartItem.variant.images.length > 0) {
+                    itemImage = cartItem.variant.images[0];
+                }
+
+                if (cartItem.variant.attributeOptions && cartItem.variant.attributeOptions.length > 0) {
+                    const variantOptions = cartItem.variant.attributeOptions
+                        .map(opt => `${opt.attribute.name}: ${opt.displayName}`)
+                        .join(', ');
+                    itemName += ` (${variantOptions})`;
+                }
+            }
+
+            return `<tr><td class="item"><img src="${itemImage}" alt="Product">${itemName}</td><td style="text-align: center;">${cartItem.quantity}</td><td style="text-align: right;">${itemPrice}</td></tr>`;
         }));
 
         let orderDiscountData = ""
@@ -97,6 +124,17 @@ orderSchema.pre('save', async function (next) {
         next(error);
     }
 });
+
+orderSchema.methods.getParsedCartItems = function() {
+    if (!this.cart_final_state) return [];
+
+    try {
+        return JSON.parse(this.cart_final_state);
+    } catch (error) {
+        console.error('Error parsing cart_final_state:', error);
+        return [];
+    }
+};
 
 const Order = mongoose.model('Order', orderSchema);
 

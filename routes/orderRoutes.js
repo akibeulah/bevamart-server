@@ -8,12 +8,14 @@ const {
 } = require('../services/orderServices');
 const {checkAddressOwnership} = require('../middleware/userMiddleware');
 const {checkDiscountLimit, checkDiscountExistence} = require('../middleware/discountMiddleware');
+const {createPaystackPaymentLink} = require("../services/externalPaymentServices");
 
 router.post(
     '/orders',
     verifyUserAuthenticated,
     checkAddressOwnership,
-    createOrder
+    createOrder,
+    createPaystackPaymentLink
 );
 
 router.get(

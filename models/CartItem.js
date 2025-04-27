@@ -20,14 +20,32 @@ cartItemSchema.index({ product: 1, parent: 1, variant: 1 }, { unique: true, part
 cartItemSchema.pre('save', async function(next) {
     try {
         const Product = mongoose.model('Product');
-        const product = await Product.findById(this.product);
+        const ProductVariant = mongoose.model('ProductVariant');
 
+        const product = await Product.findById(this.product);
         if (!product) {
             return next(new Error('Product not found'));
         }
 
         if (product.hasVariants && !this.variant) {
             return next(new Error('Variant must be specified for products with variants'));
+        }
+
+        if (this.variant) {
+            const variant = await ProductVariant.findById(this.variant);
+            if (!variant) {
+                return next(new Error('Specified variant not found'));
+            }
+
+            if (variant.parentProduct.toString() !== this.product.toString()) {
+                return next(new Error('Variant does not belong to the specified product'));
+            }
+            if (variant.price !== undefined)
+                this.price = variant.price;
+            else
+                this.price = product.price;
+        } else {
+            this.price = product.price;
         }
 
         next();
@@ -44,7 +62,7 @@ cartItemSchema.pre(/^find/, function(next) {
 
     this.populate({
         path: 'variant',
-        select: 'attributeOptions price images',
+        select: 'attributeOptions price images sku stock',
         populate: {
             path: 'attributeOptions',
             populate: {

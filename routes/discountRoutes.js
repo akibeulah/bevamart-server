@@ -43,7 +43,7 @@ router.post(
 router.get(
     '/discounts',
     verifyUserAuthenticated,
-    // verifyUserRoleAdmin,
+    verifyUserRoleAdmin,
     getAllDiscounts
 )
 
