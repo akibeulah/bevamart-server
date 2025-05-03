@@ -156,9 +156,19 @@ const addItemToCart = async (req, res, next) => {
             }
         }
 
-        let cartItem = variant
-            ? await CartItem.findOne({ parent: cartParent._id, product, variant })
-            : await CartItem.findOne({ parent: cartParent._id, product });
+        let cartItem = null;
+        if (variant) {
+            cartItem = await CartItem.findOne({ parent: cartParent._id, product, variant });
+
+            if (!cartItem) {
+                cartItem = await CartItem.findOne({ parent: cartParent._id, product });
+                cartItem.variant = variant;
+
+                await cartItem.save();
+            }
+        } else {
+            cartItem = await CartItem.findOne({ parent: cartParent._id, product });
+        }
 
         const price = (variantData && variantData.price !== undefined)
             ? variantData.price
