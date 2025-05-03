@@ -37,7 +37,7 @@ cartItemSchema.pre('save', async function(next) {
                 return next(new Error('Specified variant not found'));
             }
 
-            if (variant.parentProduct.toString() !== this.product.toString()) {
+            if (variant.parentProduct.toString() !== this.product._id.toString()) {
                 return next(new Error('Variant does not belong to the specified product'));
             }
             if (variant.price !== undefined)
