@@ -1505,7 +1505,198 @@ const createProductVariant = async (req, res) => {
     }
 };
 
+const getRandomizedProducts = async (req, res) => {
+    try {
+        const perPage = parseInt(req.query.perPage) || 20;
+        const page = parseInt(req.query.page) || 1;
+        const categorySlug = req.params.category;
+
+        let query = { status: 'active' };
+
+        if (categorySlug) {
+            const category = await Category.findOne({ slug: categorySlug });
+            if (category) {
+                query.category = category._id;
+            } else {
+                return defaultResponse(res, [404, "Category not found", null]);
+            }
+        }
+
+        const today = new Date();
+        const dateString = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+
+        const totalProductsCount = await Product.countDocuments(query);
+        const totalPages = Math.ceil(totalProductsCount / perPage);
+
+        const allProductIds = await Product.find(query).select('_id');
+
+        const shuffledIds = shuffleArray(allProductIds.map(p => p._id), dateString);
+
+        const paginatedIds = shuffledIds.slice((page - 1) * perPage, page * perPage);
+
+        const products = await Product.find({ _id: { $in: paginatedIds } })
+            .populate('category')
+            .populate({
+                path: 'variants',
+                select: 'price stock images attributeOptions',
+                populate: {
+                    path: 'attributeOptions',
+                    populate: {
+                        path: 'attribute'
+                    }
+                }
+            });
+
+        const formattedProducts = products.map(product => ({
+            ...product.toObject(),
+            displayPrice: (product.price / 100).toFixed(2)
+        }));
+
+        return defaultResponse(res, [200, "Randomized products retrieved successfully", {
+            page,
+            perPage,
+            totalPages,
+            totalItems: totalProductsCount,
+            data: formattedProducts
+        }]);
+    } catch (error) {
+        console.error("Error retrieving randomized products:", error);
+        return defaultResponse(res, [500, "Error retrieving randomized products", {
+            message: error.message
+        }]);
+    }
+};
+
+/**
+ * Deterministically shuffles an array based on a seed string.
+ * @param {Array} array - The array to shuffle
+ * @param {string} seed - A seed string for consistent shuffling
+ * @returns {Array} - The shuffled array
+ */
+function shuffleArray(array, seed) {
+    const result = [...array];
+
+    const seededRandom = createSeededRandom(seed);
+
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+
+    return result;
+}
+
+/**
+ * Creates a seeded pseudorandom number generator
+ * @param {string} seed - A seed string
+ * @returns {Function} - A function that returns a pseudorandom number between 0 and 1
+ */
+const createSeededRandom = (seed) => {
+    let hash = 0;
+    for (let i = 0; i < seed.length; i++) {
+        hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+        hash = hash & hash;
+    }
+
+    return function() {
+        const x = Math.sin(hash++) * 10000;
+        return x - Math.floor(x);
+    };
+}
+
+const getBestSellers = async (req, res) => {
+    try {
+        const perPage = parseInt(req.query.perPage) || 20;
+        const page = parseInt(req.query.page) || 1;
+        const timeFrame = req.query.timeFrame || 'all';
+
+        let dateFilter = {};
+        if (timeFrame === 'month' || timeFrame === 'week') {
+            const now = new Date();
+            const startDate = new Date();
+
+            if (timeFrame === 'month') {
+                startDate.setMonth(now.getMonth() - 1);
+            } else if (timeFrame === 'week') {
+                startDate.setDate(now.getDate() - 7);
+            }
+
+            dateFilter.createdAt = { $gte: startDate };
+        }
+
+        const productPopularity = await CartItem.aggregate([
+            { $match: dateFilter },
+            {
+                $group: {
+                    _id: "$product",
+                    count: { $sum: "$quantity" }
+                }
+            },
+            { $sort: { count: -1 } }
+        ]);
+
+        const totalItems = productPopularity.length;
+        const totalPages = Math.ceil(totalItems / perPage);
+
+        const paginatedPopularity = productPopularity.slice(
+            (page - 1) * perPage,
+            page * perPage
+        );
+
+        const productIds = paginatedPopularity.map(item => item._id);
+
+        const products = await Product.find({
+            _id: { $in: productIds },
+            status: 'active'
+        })
+            .populate('category')
+            .populate({
+                path: 'variants',
+                select: 'price stock images attributeOptions',
+                populate: {
+                    path: 'attributeOptions',
+                    populate: {
+                        path: 'attribute'
+                    }
+                }
+            });
+
+
+        const sortedProducts = productIds.map(id => {
+            const product = products.find(p => p._id.toString() === id.toString());
+            if (!product) return null;
+
+
+            const popularity = paginatedPopularity.find(
+                item => item._id.toString() === id.toString()
+            );
+
+            return {
+                ...product.toObject(),
+                displayPrice: (product.price / 100).toFixed(2),
+                popularityScore: popularity ? popularity.count : 0
+            };
+        }).filter(Boolean);
+
+        return defaultResponse(res, [200, "Best sellers retrieved successfully", {
+            page,
+            perPage,
+            totalPages,
+            totalItems,
+            timeFrame,
+            data: sortedProducts
+        }]);
+    } catch (error) {
+        console.error("Error retrieving best sellers:", error);
+        return defaultResponse(res, [500, "Error retrieving best sellers", {
+            message: error.message
+        }]);
+    }
+};
+
 module.exports = {
+    getBestSellers,
+    getRandomizedProducts,
     createProduct,
     createProductAttribute,
     createProductAttributeOption,
