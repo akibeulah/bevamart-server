@@ -12,8 +12,8 @@ const Inventory = require("../models/Inventory");
 
 const createOrder = async (req, res, next) => {
     try {
-        const {discount_code, payment_method} = req.body;
-        const cartobj = await Cart.find({user: req.user_id, locked: false}).populate("owner")
+        const {discount_code} = req.body;
+        const cartObj = (await Cart.find({owner: req.user_id, locked: false}).populate("owner"))[0]
 
         let total_amount = 0;
         let discount = null
@@ -27,7 +27,7 @@ const createOrder = async (req, res, next) => {
             return defaultResponse(res, [400, "Cart is already locked", null]);
         }
 
-        const cartItems = await CartItem.find({parent: cart})
+        const cartItems = await CartItem.find({parent: cartObj._id})
             .populate('product')
             .populate({
                 path: 'variant',
@@ -92,13 +92,12 @@ const createOrder = async (req, res, next) => {
             user_id: req.user_id,
             total_amount,
             shipping_cost: shipping_cost[0].value,
-            cart,
+            cart: cartObj,
             cart_final_state: JSON.stringify(final_cart_state),
             discount: discount ? discount._id : null,
             discount_amount,
             address_id: req.address._id,
-            source: req.headers['user-agent'],
-            payment_method
+            source: req.headers['user-agent']
         });
 
         await order.save();

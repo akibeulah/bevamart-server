@@ -51,7 +51,7 @@ const getFaqById = async (req, res, next) => {
 
 const getAllFaqs = async (req, res, next) => {
     try {
-        const faqs = await Faq.find();
+        const faqs = await Faq.find().populate('category');
         return defaultResponse(res, [200, 'Faqs retrieved successfully', faqs]);
     } catch (error) {
         console.error(error);

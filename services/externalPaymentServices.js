@@ -11,9 +11,7 @@ const createPaystackPaymentLink = async (req, res, next) => {
 
         const fields = {
             email: req.user.email,
-            amount: (order.discount_amount ?? order.total_amount) * 100,
-            // callback_url: "https://hello.pstk.xyz/callback",
-            metadata: {orderReference: `${Date.now()}_${order.id}`}
+            amount: (!order.discount_amount || order.discount_amount === 0 ? order.total_amount : order.discount_amount) * 100
         };
 
         const response = await axios.post(url, fields, {
@@ -32,7 +30,7 @@ const createPaystackPaymentLink = async (req, res, next) => {
         }]);
     } catch (error) {
         console.error(error);
-        res.status(500).json({error: 'An error occurred while creating the payment link.'});
+        res.status(500).json({error: 'An error occurred while creating the payment link.', error});
     }
 };
 
