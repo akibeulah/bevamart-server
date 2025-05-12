@@ -160,12 +160,12 @@ const addItemToCart = async (req, res, next) => {
         if (variant) {
             cartItem = await CartItem.findOne({ parent: cartParent._id, product, variant });
 
-            if (!cartItem) {
-                cartItem = await CartItem.findOne({ parent: cartParent._id, product });
-                cartItem.variant = variant;
-
-                await cartItem.save();
-            }
+            // if (!cartItem) {
+            //     cartItem = await CartItem.findOne({ parent: cartParent._id, product });
+            //     cartItem.variant = variant;
+            //
+            //     await cartItem.save();
+            // }
         } else {
             cartItem = await CartItem.findOne({ parent: cartParent._id, product });
         }
