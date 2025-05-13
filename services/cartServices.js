@@ -157,8 +157,9 @@ const addItemToCart = async (req, res, next) => {
         }
 
         let cartItem = null;
+        const cartParentId = cartParent._id.toString();
         if (variant) {
-            cartItem = await CartItem.findOne({ parent: cartParent._id, product, variant });
+            cartItem = await CartItem.findOne({ parent: cartParentId, product, variant });
 
             // if (!cartItem) {
             //     cartItem = await CartItem.findOne({ parent: cartParent._id, product });
@@ -167,7 +168,7 @@ const addItemToCart = async (req, res, next) => {
             //     await cartItem.save();
             // }
         } else {
-            cartItem = await CartItem.findOne({ parent: cartParent._id, product });
+            cartItem = await CartItem.findOne({ parent: cartParentId, product });
         }
 
         const price = (variantData && variantData.price !== undefined)
@@ -187,7 +188,7 @@ const addItemToCart = async (req, res, next) => {
         } else {
             // Create new cart item
             const newCartItem = new CartItem({
-                parent: cartParent._id,
+                parent: cartParentId,
                 product,
                 quantity,
                 price,

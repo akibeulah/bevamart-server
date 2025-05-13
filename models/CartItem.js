@@ -14,7 +14,6 @@ const cartItemSchema = new Schema(
     }
 );
 
-cartItemSchema.index({ product: 1, parent: 1 }, { unique: true, partialFilterExpression: { variant: { $exists: true } }});
 cartItemSchema.index({ product: 1, parent: 1, variant: 1 }, { unique: true, partialFilterExpression: { variant: { $exists: true } }});
 
 cartItemSchema.pre('save', async function(next) {
