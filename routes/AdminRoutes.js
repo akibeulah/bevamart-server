@@ -11,7 +11,7 @@ const {
     resetAdminPassword,
     getAllCustomers,
     lockCustomerAccount, getCustomerOverview
-} = require('../services/AdminService');
+} = require('../services/adminService');
 
 router.post(
     '/admin',

@@ -16,6 +16,7 @@ const ORDER_ROUTES = require("./orderRoutes")
 const EXTERN_PAYMENT_ROUTES = require("./externalPaymentRoutes")
 const ADMIN_USER_ROUTES = require("./AdminRoutes")
 const OPERATIONS_ROUTES = require("./operationsRoutes")
+const MEDIA_ROUTES = require("./mediaRoutes")
 
 module.exports = [
     AUTHENTICATION_ROUTES,
@@ -35,5 +36,6 @@ module.exports = [
     ORDER_ROUTES,
     EXTERN_PAYMENT_ROUTES,
     ADMIN_USER_ROUTES,
-    OPERATIONS_ROUTES
+    OPERATIONS_ROUTES,
+    MEDIA_ROUTES,
 ]
