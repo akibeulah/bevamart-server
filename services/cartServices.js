@@ -133,10 +133,11 @@ const getCartWithItems = async (req, res, next) => {
 const addItemToCart = async (req, res, next) => {
     try {
         const { product, quantity, variant } = req.body;
-        const cartParent = await Cart.findOne({ owner: req.user_id, locked: false });
+        let cartParent = await Cart.findOne({ owner: req.user_id, locked: false });
 
         if (!cartParent) {
-            return defaultResponse(res, [400, 'You do not have an open cart, please create a new one', ""]);
+            cartParent = new Cart({owner: req.user_id, locked: false});
+            await cartParent.save();
         }
 
         const productData = await Product.findById(product);

@@ -24,6 +24,7 @@ const createPaystackPaymentLink = async (req, res, next) => {
         order.orderPSPaymentCode = response.data.access_code;
         await order.save()
 
+        order.cart.owner.password = ""
         return defaultResponse(res, [200, "Order retrieved successfully", {
             order,
             payment: response.data
