@@ -18,6 +18,7 @@ const upload = multer({
 });
 
 const uploadMiddleware = upload.single('image');
+const multiUploadMiddleware = upload.array('images', 5);
 
 /**
  * Uploads an image to Cloudinary
@@ -77,6 +78,75 @@ const uploadImage = async (req, res, next) => {
         return defaultResponse(res, [500, 'Error processing upload request', error]);
     }
 };
+
+const uploadMultipleImages = async (req, res, next) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return defaultResponse(res, [400, 'No image files provided', null]);
+        }
+
+        // Extract folder and transformation options from request if provided
+        const folder = req.body.folder || 'general';
+        const { width, height, crop } = req.body;
+
+        // Array to store results of all uploads
+        const uploadResults = [];
+
+        // Create promises for each file upload
+        const uploadPromises = req.files.map(file => {
+            return new Promise((resolve, reject) => {
+                // Create a stream from buffer
+                const stream = Readable.from(file.buffer);
+
+                // Create upload stream to Cloudinary
+                const streamUpload = cloudinary.uploader.upload_stream(
+                    {
+                        folder,
+                        // Optional transformations if provided
+                        ...(width && { width: parseInt(width) }),
+                        ...(height && { height: parseInt(height) }),
+                        ...(crop && { crop }),
+                    },
+                    (error, result) => {
+                        if (error) {
+                            console.error('Cloudinary upload error:', error);
+                            reject(error);
+                        } else {
+                            resolve({
+                                url: result.secure_url,
+                                public_id: result.public_id,
+                                original_filename: result.original_filename,
+                                format: result.format,
+                                resource_type: result.resource_type,
+                                created_at: result.created_at,
+                                bytes: result.bytes,
+                                width: result.width,
+                                height: result.height,
+                            });
+                        }
+                    }
+                );
+
+                stream.pipe(streamUpload);
+            });
+        });
+
+        // Wait for all uploads to complete
+        const results = await Promise.all(uploadPromises)
+            .catch(error => {
+                console.error('Error in batch upload:', error);
+                return defaultResponse(res, [500, 'Error uploading images to Cloudinary', error]);
+            });
+
+        // Return success with results
+        return defaultResponse(res, [200, 'Images uploaded successfully', results]);
+
+    } catch (error) {
+        console.error('Error in multi-upload handler:', error);
+        return defaultResponse(res, [500, 'Error processing multi-upload request', error]);
+    }
+};
+
 
 /**
  * Deletes an image from Cloudinary by public_id
@@ -150,7 +220,9 @@ const getTransformedImageUrl = async (req, res, next) => {
 
 module.exports = {
     uploadMiddleware,
+    multiUploadMiddleware,
     uploadImage,
+    uploadMultipleImages,
     deleteImage,
     getTransformedImageUrl
 };

@@ -6,7 +6,7 @@ const {
     uploadMiddleware,
     uploadImage,
     deleteImage,
-    getTransformedImageUrl
+    getTransformedImageUrl, multiUploadMiddleware, uploadMultipleImages
 } = require('../services/mediaServices');
 
 // router.post(
@@ -22,6 +22,14 @@ router.post(
     verifyUserRoleAdmin,
     uploadMiddleware,
     uploadImage
+);
+
+router.post(
+    '/admin/upload/multiple',
+    verifyUserAuthenticated,
+    verifyUserRoleAdmin,
+    multiUploadMiddleware,
+    uploadMultipleImages
 );
 
 router.delete(
