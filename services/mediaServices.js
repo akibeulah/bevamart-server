@@ -139,7 +139,7 @@ const uploadMultipleImages = async (req, res, next) => {
             });
 
         // Return success with results
-        return defaultResponse(res, [200, 'Images uploaded successfully', results]);
+        return defaultResponse(res, [200, 'Images uploaded successfully', results.map(u => u.url)]);
 
     } catch (error) {
         console.error('Error in multi-upload handler:', error);
