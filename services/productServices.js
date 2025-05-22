@@ -291,9 +291,11 @@ const updateProduct = async (req, res) => {
             return defaultResponse(res, [404, "Product not found", null]);
         }
 
+        const up = await Product.findById(updatedProduct._id);
+
         const responseData = {
             product: {
-                ...updatedProduct.toObject(),
+                ...up.toObject(),
                 displayPrice: (updatedProduct.price / 100).toFixed(2)
             }
         };
