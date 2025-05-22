@@ -1196,7 +1196,23 @@ const updateMultipleProductVariants = async (req, res) => {
 
         // Process each variant
         for (let i = 0; i < variants.length; i++) {
-            const variantData = variants[i];
+            let variantData = null;
+            try {
+                variantData = JSON.parse(variants[i]);
+
+                if (!(variantData instanceof Object)) {
+                    errors.push(`Variant needs to be an object after JSON.parse() for variant at index ${i}: ${JSON.stringify(variantData)}`);
+                    continue;
+                }
+            } catch (error) {
+                errors.push(`Variant needs to be a JSON stringified object for variant at index ${i}: ${JSON.stringify(variantData)}. Error: ${error.message}`);
+                continue;
+            }
+            if (variantData === null) {
+                errors.push(`Error processing variant at index ${i}.`);
+                continue;
+            }
+
             const {
                 id,
                 sku,
