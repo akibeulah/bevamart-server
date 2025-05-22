@@ -17,7 +17,7 @@ const createProduct = async (req, res) => {
         const {
             name, brand, productImages, description, price,
             amount, unit, stock, tags, status,
-            lowAlert, variants, productVariantGroup
+            lowAlert, variants, productVariantGroup, productSpecification
         } = req.body;
         // Validate required fields
         if (!name || !brand || !description || price === undefined) {
@@ -48,7 +48,8 @@ const createProduct = async (req, res) => {
             tags: Array.isArray(tags) ? tags : [],
             lowAlert: lowAlert || 0,
             status: status || 'active',
-            productVariantGroup
+            productVariantGroup,
+            productSpecification
         };
 
         // Check if product has variants
@@ -227,7 +228,7 @@ const updateProduct = async (req, res) => {
     try {
         let {
             name, brand, productImages, description, price, amount, unit,
-            tags, status, lowAlert, category, productVariantGroup
+            tags, status, lowAlert, category, productVariantGroup, productSpecification
         } = req.body;
 
         if (!name)
@@ -278,6 +279,7 @@ const updateProduct = async (req, res) => {
         if (lowAlert !== undefined) updateData.lowAlert = lowAlert;
         if (category !== undefined) updateData.category = category;
         if (productVariantGroup !== undefined) updateData.productVariantGroup = productVariantGroup;
+        if (productSpecification !== undefined) updateData.productSpecification = productSpecification;
 
 
         // Update the base product
@@ -1041,11 +1043,6 @@ const deleteProductAttributeOption = async (req, res) => {
     }
 };
 
-/**
- * Updates a single product variant
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
 const updateProductVariant = async (req, res) => {
     try {
         const { productId, variantId } = req.params;
@@ -1089,44 +1086,49 @@ const updateProductVariant = async (req, res) => {
         if (lowAlert !== undefined) updateData.lowAlert = lowAlert;
 
         // Process attributeOptions if provided
-        if (attributeOptions && Array.isArray(attributeOptions) && attributeOptions.length > 0) {
-            // Validate that all attribute options exist in the database
-            const optionIds = attributeOptions.map(option =>
-                typeof option === 'string' ? option : option._id
-            );
+        if (attributeOptions !== undefined) {
+            if (Array.isArray(attributeOptions) && attributeOptions.length > 0) {
+                // Validate that all attribute options exist in the database
+                const optionIds = attributeOptions.map(option =>
+                    typeof option === 'string' ? option : option._id
+                );
 
-            const existingOptions = await ProductAttributeOption.find({_id: {$in: optionIds}});
+                const existingOptions = await ProductAttributeOption.find({_id: {$in: optionIds}});
 
-            if (existingOptions.length !== optionIds.length) {
-                const foundIds = existingOptions.map(opt => opt._id.toString());
-                const missingIds = optionIds.filter(id => !foundIds.includes(id.toString()));
+                if (existingOptions.length !== optionIds.length) {
+                    const foundIds = existingOptions.map(opt => opt._id.toString());
+                    const missingIds = optionIds.filter(id => !foundIds.includes(id.toString()));
 
-                return defaultResponse(res, [400, "Some attribute options do not exist", {
-                    missingOptionIds: missingIds
-                }]);
+                    return defaultResponse(res, [400, "Some attribute options do not exist", {
+                        missingOptionIds: missingIds
+                    }]);
+                }
+
+                updateData.attributeOptions = optionIds;
+            } else {
+                // If attributeOptions is provided but empty or not an array, clear it
+                updateData.attributeOptions = [];
             }
-
-            updateData.attributeOptions = optionIds;
         }
 
         // Process images if provided
-        let cleanedImages = [];
-        if (Array.isArray(images)) {
-            cleanedImages = images;
-        } else if (images) {
-            try {
-                cleanedImages = JSON.parse(images);
-                if (!Array.isArray(cleanedImages)) {
-                    cleanedImages = [];
-                }
-            } catch (error) {
-                console.error("Error parsing variant images:", error);
-                // Keep existing images if parsing fails
-                cleanedImages = variant.images || [];
-            }
-        }
-
         if (images !== undefined) {
+            let cleanedImages = variant.images || [];
+
+            if (Array.isArray(images)) {
+                cleanedImages = images;
+            } else if (images) {
+                try {
+                    cleanedImages = JSON.parse(images);
+                    if (!Array.isArray(cleanedImages)) {
+                        cleanedImages = variant.images || [];
+                    }
+                } catch (error) {
+                    console.error("Error parsing variant images:", error);
+                    cleanedImages = variant.images || [];
+                }
+            }
+
             updateData.images = cleanedImages;
         }
 
@@ -1162,6 +1164,176 @@ const updateProductVariant = async (req, res) => {
         }
 
         return defaultResponse(res, [500, "Error updating product variant", {
+            message: error.message
+        }]);
+    }
+};
+
+const updateMultipleProductVariants = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { variants } = req.body;
+        const errors = [];
+        const updatedVariants = [];
+
+        // Validate input
+        if (!productId) {
+            return defaultResponse(res, [400, "Product ID is required", null]);
+        }
+
+        if (!variants || !(variants instanceof Array)) {
+            return defaultResponse(res, [400, "Variants must be an array", null]);
+        }
+
+        if (variants.length === 0) {
+            return defaultResponse(res, [400, "Variants must contain at least one item", null]);
+        }
+
+        const product = await Product.findById(productId);
+        if (!product) {
+            return defaultResponse(res, [404, "Product not found", null]);
+        }
+
+        // Process each variant
+        for (let i = 0; i < variants.length; i++) {
+            const variantData = variants[i];
+            const {
+                id,
+                sku,
+                price,
+                images,
+                lowAlert,
+                attributeOptions
+            } = variantData;
+
+            if (!id) {
+                errors.push(`Variant ID is required for variant at index ${i}: ${JSON.stringify(variantData)}`);
+                continue;
+            }
+
+            try {
+                const variant = await ProductVariant.findById(id);
+                if (!variant) {
+                    errors.push(`Variant not found for ID: ${id}`);
+                    continue;
+                }
+
+                if (variant.parentProduct.toString() !== product._id.toString()) {
+                    errors.push(`Variant [${id}] does not belong to the product`);
+                    continue;
+                }
+
+                const updateData = {};
+
+                if (sku !== undefined) updateData.sku = sku;
+                if (price !== undefined) updateData.price = Math.round(price * 100);
+                if (lowAlert !== undefined) updateData.lowAlert = lowAlert;
+
+                // Process attributeOptions if provided
+                if (attributeOptions !== undefined) {
+                    if (Array.isArray(attributeOptions) && attributeOptions.length > 0) {
+                        // Validate that all attribute options exist in the database
+                        const optionIds = attributeOptions.map(option =>
+                            typeof option === 'string' ? option : option._id
+                        );
+
+                        const existingOptions = await ProductAttributeOption.find({_id: {$in: optionIds}});
+
+                        if (existingOptions.length !== optionIds.length) {
+                            const foundIds = existingOptions.map(opt => opt._id.toString());
+                            const missingIds = optionIds.filter(id => !foundIds.includes(id.toString()));
+
+                            errors.push(`Some attribute options do not exist for variant [${id}]: ${missingIds.join(', ')}`);
+                            continue;
+                        }
+
+                        updateData.attributeOptions = optionIds;
+                    } else {
+                        // If attributeOptions is provided but empty or not an array, clear it
+                        updateData.attributeOptions = [];
+                    }
+                }
+
+                // Process images if provided
+                if (images !== undefined) {
+                    let cleanedImages = variant.images || [];
+
+                    if (Array.isArray(images)) {
+                        cleanedImages = images;
+                    } else if (images) {
+                        try {
+                            cleanedImages = JSON.parse(images);
+                            if (!Array.isArray(cleanedImages)) {
+                                cleanedImages = variant.images || [];
+                            }
+                        } catch (error) {
+                            console.error("Error parsing variant images:", error);
+                            cleanedImages = variant.images || [];
+                        }
+                    }
+
+                    updateData.images = cleanedImages;
+                }
+
+                // Update the variant
+                const updatedVariant = await ProductVariant.findByIdAndUpdate(
+                    id,
+                    updateData,
+                    {new: true, runValidators: true}
+                );
+
+                if (!updatedVariant) {
+                    errors.push(`Failed to update variant [${id}]`);
+                    continue;
+                }
+
+                // Add display price and push to results
+                updatedVariants.push({
+                    ...updatedVariant.toObject(),
+                    displayPrice: (updatedVariant.price / 100).toFixed(2)
+                });
+
+            } catch (variantError) {
+                console.error(`Error updating variant [${id}]:`, variantError);
+                errors.push(`Error updating variant [${id}]: ${variantError.message}`);
+            }
+        }
+
+        const hasErrors = errors.length > 0;
+        const successCount = updatedVariants.length;
+        const totalCount = variants.length;
+
+        let message;
+        if (successCount === 0) {
+            message = "No variants were updated";
+        } else if (hasErrors) {
+            message = `${successCount} of ${totalCount} variants updated successfully`;
+        } else {
+            message = "All variants updated successfully";
+        }
+
+        return defaultResponse(res, [200, message, {
+            updatedVariants,
+            errors,
+            summary: {
+                total: totalCount,
+                successful: successCount,
+                failed: errors.length
+            }
+        }]);
+
+    } catch (error) {
+        console.error("Error updating product variants:", error);
+
+        if (error.name === 'ValidationError') {
+            return defaultResponse(res, [400, "Validation error", error.errors]);
+        }
+
+        if (error.code === 11000) {
+            return defaultResponse(res, [400, "Duplicate key error", error.keyValue]);
+        }
+
+        return defaultResponse(res, [500, "Error updating product variants", {
             message: error.message
         }]);
     }
@@ -1722,5 +1894,6 @@ module.exports = {
     deleteProductVariant,
     getProductVariants,
     updateVariantStock,
-    createProductVariant
+    createProductVariant,
+    updateMultipleProductVariants
 };
