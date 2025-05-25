@@ -322,11 +322,11 @@ const updateProduct = async (req, res) => {
 
 const getProductsOverview = async (req, res) => {
     try {
-        const newestProduct = await Product.findOne({}).sort({createdAt: -1}).limit(1);
-        const mostViewedProducts = await Product.find({}).sort({views: -1}).limit(5);
-        const leastPerformingProduct = await Product.find({}).sort({views: 1}).limit(1);
+        const newestProduct = await Product.findOne({}).populate("variants").sort({createdAt: -1}).limit(1);
+        const mostViewedProducts = await Product.find({}).populate("variants").sort({views: -1}).limit(5);
+        const leastPerformingProduct = await Product.find({}).populate("variants").sort({views: 1}).limit(1);
 
-        const cartItems = await CartItem.find({});
+        const cartItems = await CartItem.find();
 
         if (cartItems.length === 0) {
             return defaultResponse(res, [200, "Products overview retrieved successfully", {
@@ -349,9 +349,9 @@ const getProductsOverview = async (req, res) => {
         let topPerformingProduct = null;
         if (productCounts.size > 0) {
             const topPerformingProductId = [...productCounts.entries()]
-                .sort((a, b) => b[1] - a[1])[0][0]; // Sort by count descending and get first
+                .sort((a, b) => b[1] - a[1])[0][0];
 
-            topPerformingProduct = await Product.findById(topPerformingProductId);
+            topPerformingProduct = await Product.findById(topPerformingProductId).populate("variants");
         }
 
         return defaultResponse(res, [200, "Products overview retrieved successfully", {

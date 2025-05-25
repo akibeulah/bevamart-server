@@ -664,15 +664,16 @@ const getOrdersOverview = async (req, res, next) => {
 
 const getOrderRevenue = async (req, res, next) => {
     try {
-        const { sortBy } = req.query;
+        const { sortBy, status } = req.query;
         let startDate, endDate, groupBy;
-
+        const statusArr = status ? status.split(",").map(a => a.toLowerCase()) : ['pending', 'vendor_preparing_order', 'order_ready_for_delivery', 'order_out_for_delivery', 'delivery_confirmed'];
         const today = new Date();
         if (sortBy === 'week') {
             startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6);
             endDate = today;
             groupBy = { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } };
-        } else if (sortBy === 'month') {
+        }
+        else if (sortBy === 'month') {
             startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 21);
             endDate = today;
             groupBy = {
@@ -693,7 +694,8 @@ const getOrderRevenue = async (req, res, next) => {
                     date: "$createdAt"
                 }
             };
-        } else if (sortBy === 'year') {
+        }
+        else if (sortBy === 'year') {
             startDate = new Date(today.getFullYear() - 1, today.getMonth() + 1, 1);
             endDate = today;
             groupBy = {
@@ -702,16 +704,16 @@ const getOrderRevenue = async (req, res, next) => {
                     date: "$createdAt"
                 }
             };
-        } else {
+        }
+        else {
             return res.status(400).json({ message: "Invalid sortBy value" });
         }
 
-        // Only include completed orders (delivered) in revenue calculations
         const revenueData = await Order.aggregate([
             {
                 $match: {
                     createdAt: { $gte: startDate, $lt: endDate },
-                    status: { $in: ['delivery_confirmed', 'order_out_for_delivery'] }
+                    status: { $in: statusArr }
                 }
             },
             {
@@ -730,7 +732,8 @@ const getOrderRevenue = async (req, res, next) => {
             data: revenueData.map(item => ({
                 date: item._id,
                 amount: item.amount,
-                numberOfOrders: item.numberOfOrders
+                numberOfOrders: item.numberOfOrders,
+                orders: item
             }))
         });
     } catch (error) {
