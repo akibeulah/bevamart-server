@@ -439,7 +439,13 @@ const getProductById = async (req, res) => {
 
 const getProductBySlug = async (req, res) => {
     try {
-        let product = await Product.findOne({slug: req.params.productSlug}).populate("variants")
+        let product = await Product.findOne({slug: req.params.productSlug}).populate(
+            {
+                path: "variants",
+                populate: {
+                    path: 'attributeOptions'
+                }
+            })
         if (!product)
             return defaultResponse(res, [404, "Product not found!", null])
 
