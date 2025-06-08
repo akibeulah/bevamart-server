@@ -9,6 +9,7 @@ const {newOrderEmailSubject} = require("../mailer/emailString");
 const {capitalize} = require("../utils/utils");
 const TssMailer = require('./mailerService');
 const Inventory = require("../models/Inventory");
+const ProductVariant = require("../models/ProductVariant");
 
 const createOrder = async (req, res, next) => {
     try {
@@ -109,10 +110,10 @@ const createOrder = async (req, res, next) => {
         console.log(error);
         return defaultResponse(res, [500, "Internal server error", error]);
     }
-};
+ };
 
 const getOrderById = async (req, res, next) => {
-    try {
+        try {
         const order = await Order.findById(req.params.orderId)
             .populate("address_id")
             .populate("user_id", "first_name last_name email");
