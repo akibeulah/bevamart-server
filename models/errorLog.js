@@ -3,6 +3,9 @@ const {Schema} = mongoose;
 
 const errorLogSchema = new Schema(
     {
+        message: String,
+        data: String,
+        endpoint: String,
         model: String,
         ref: String,
         desc: String,
