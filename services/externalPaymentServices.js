@@ -34,9 +34,9 @@ const createPaystackPaymentLink = async (req, res, next) => {
         }
 
         // Calculate payment amount (fix discount logic)
-        const paymentAmount = order.discount_amount && order.discount_amount > 0
+        const paymentAmount = ((order.discount_amount && order.discount_amount > 0)
             ? order.discount_amount
-            : order.total_amount;
+            : order.total_amount) / 100;
 
         if (!paymentAmount || paymentAmount <= 0) {
             return res.status(400).json({

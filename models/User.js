@@ -15,7 +15,7 @@ const userSchema = new Schema(
         password: { type: String, required: true },
         accepts_marketing: { type: Boolean, required: true },
         isEmailVerified: { type: Boolean, default: false },
-        role: { type: String, enum: ['customer', 'admin'], default: "customer" },
+        role: { type: String, enum: ['CUSTOMER', 'ADMIN'], default: "CUSTOMER" },
         state: { type: String, enum: ['enabled', 'disabled', 'deleted'], default: "enabled" }
     },
     {
