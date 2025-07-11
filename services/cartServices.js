@@ -64,7 +64,6 @@ const getCartWithItems = async (req, res, next) => {
     try {
         const userId = new mongoose.Types.ObjectId(req.user_id);
 
-        // Retrieve carts with items using aggregation
         let cartsWithItems = await Cart.aggregate([
             {
                 $match: {owner: userId, locked: false}
@@ -99,26 +98,25 @@ const getCartWithItems = async (req, res, next) => {
             }
         }
 
-        if (!cartsWithItems[0].locked) {
-            cartsWithItems = await Cart.aggregate([
-                {
-                    $match: {owner: userId, locked: false}
-                },
-                {
-                    $lookup: {
-                        from: 'cartitems',
-                        localField: '_id',
-                        foreignField: 'parent',
-                        as: 'items'
-                    }
-                }
-            ]);
-        }
 
+        // Populate full product and variant information
         cartsWithItems[0].items = await Promise.all(
             cartsWithItems[0].items.map(async (p) => {
-                p.product = await Product.findById(p.product);
-                p.variant = await ProductVariant.findById(p.variant)
+                // Populate the product
+                p.product = await Product.findById(p.product).populate('variants');
+
+                // Populate the variant with full attribute options
+                if (p.variant) {
+                    p.variant = await ProductVariant.findById(p.variant)
+                        .populate({
+                            path: 'attributeOptions',
+                            populate: {
+                                path: 'attribute'
+                            }
+                        })
+                        .populate('parentProduct');
+                }
+
                 return p;
             })
         );

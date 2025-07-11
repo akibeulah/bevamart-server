@@ -151,7 +151,7 @@ const getAllCustomers = async (req, res, next) => {
         const page = parseInt(req.query.page) || 1;
         const {isEmailVerified, accepts_marketing} = req.query;
 
-        let query = {role: 'customer'};
+        let query = {role: {$regex: /^customer$/i}};
         if (isEmailVerified) query.isEmailVerified = isEmailVerified === 'true';
         if (accepts_marketing) query.accepts_marketing = accepts_marketing === 'true';
 
@@ -176,6 +176,7 @@ const getAllCustomers = async (req, res, next) => {
             page,
             perPage,
             totalPages,
+            totalEntries: await User.countDocuments({role: {$regex: /^customer$/i}}),
             data: parsedUsers
         }]);
     } catch (error) {
