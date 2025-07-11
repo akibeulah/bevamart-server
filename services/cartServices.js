@@ -108,13 +108,8 @@ const getCartWithItems = async (req, res, next) => {
                 // Populate the variant with full attribute options
                 if (p.variant) {
                     p.variant = await ProductVariant.findById(p.variant)
-                        .populate({
-                            path: 'attributeOptions',
-                            populate: {
-                                path: 'attribute'
-                            }
-                        })
-                        .populate('parentProduct');
+                        .populate('attributeOptions')
+                        // .populate('parentProduct');
                 }
 
                 return p;
