@@ -18,18 +18,18 @@ app.use(bodyParser.urlencoded({
 app.use('/api/v1', apiV1Router);
 app.use(express.static('public'));
 
-const handleNotFound = (req, res, next) => {
+const handleNotFound = (req, res) => {
     return defaultResponse(res, [404, "Sorry, this endpoint does not exist", ""])
 };
 
-const handleMethodNotAllowed = (req, res, next) => {
+const handleMethodNotAllowed = (req, res) => {
     return defaultResponse(res, [404, "Sorry, this method is not allowed for this endpoint", ""])
 };
 
 app.use(handleNotFound);
 app.use(handleMethodNotAllowed);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5001;
 app.listen(port, () => {
     console.log(`Server started on port ${port}`);
 });

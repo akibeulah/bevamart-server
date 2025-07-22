@@ -1,7 +1,7 @@
 const AUTHENTICATION_ROUTES = require('./authenticationRoutes');
 const USER_ROUTES = require("./userRoutes")
 const ADDRESS_BOOK_ROUTES = require("./addressBookRoutes")
-const CATEGOTY_ROUTES = require("./categoryRoutes")
+const CATEGORY_ROUTES = require("./categoryRoutes")
 const TYPE_ROUTES = require("./typeRoutes")
 const PRODUCT_ROUTES = require("./productRoutes")
 const INVENTORY_ROUTES = require("./inventoryRoutes")
@@ -17,12 +17,13 @@ const EXTERN_PAYMENT_ROUTES = require("./externalPaymentRoutes")
 const ADMIN_USER_ROUTES = require("./AdminRoutes")
 const OPERATIONS_ROUTES = require("./operationsRoutes")
 const MEDIA_ROUTES = require("./mediaRoutes")
+const DASHBOARD_ROUTES = require("./dashboardCarouselRoutes")
 
 module.exports = [
     AUTHENTICATION_ROUTES,
     USER_ROUTES,
     ADDRESS_BOOK_ROUTES,
-    CATEGOTY_ROUTES,
+    CATEGORY_ROUTES,
     TYPE_ROUTES,
     PRODUCT_ROUTES,
     INVENTORY_ROUTES,
@@ -38,4 +39,5 @@ module.exports = [
     ADMIN_USER_ROUTES,
     OPERATIONS_ROUTES,
     MEDIA_ROUTES,
+    DASHBOARD_ROUTES,
 ]
