@@ -21,6 +21,10 @@ const createOrder = async (req, res, next) => {
         let discount_amount = 0;
         const shipping_cost = req.address.state.toLowerCase() === "lagos" ? await Operations.find({property: "STANDARD_DELIVERY_FEE"}) : await Operations.find({property: "NATION_WIDE_DELIVERY_FEE"})
 
+        if (shipping_cost.length === 0) {
+            return defaultResponse(res, [404, "Shipping cost not found", null]);
+        }
+
         if (!cartObj) {
             return defaultResponse(res, [404, "Cart not found", null]);
         }
