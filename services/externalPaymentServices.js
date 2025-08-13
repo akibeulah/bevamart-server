@@ -47,7 +47,7 @@ const createPaystackPaymentLink = async (req, res, next) => {
         const url = "https://api.paystack.co/transaction/initialize";
         const fields = {
             email: req.user.email,
-            amount: Math.round(paymentAmount * 100), // Ensure integer amount in kobo
+            amount: Math.round(paymentAmount),
             metadata: {
                 orderReference: `order_${order._id}`,
                 userId: req.user.id
@@ -195,7 +195,7 @@ const paystackCallBack = async (req, res, next) => {
                 success: true,
                 source: "paystack",
                 reference: data.reference,
-                amount: data.amount / 100, // Convert from kobo to naira
+                amount: data.amount,
                 currency: data.currency || "NGN"
             });
             await newExternalPayment.save();
